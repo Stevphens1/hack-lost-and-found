@@ -67,14 +67,14 @@
                 <!-- Auth Buttons -->
                 <button
                     type="button"
-                    class="openLoginBtn px-4 py-2 text-xs sm:text-sm font-semibold theme-text-secondary hover:theme-text-primary transition-colors"
+                    class="openLoginBtn px-4 py-2 text-xs sm:text-sm font-semibold theme-text-secondary hover:theme-text-primary transition-colors cursor-pointer"
                 >
                     Iniciar Sesión
                 </button>
 
                 <button
                     type="button"
-                    class="openRegisterBtn btn-pill px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20"
+                    class="openRegisterBtn btn-pill px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20 cursor-pointer"
                 >
                     Reportar Objeto
                 </button>
@@ -109,19 +109,19 @@
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <button
                     type="button"
-                    class="openRegisterBtn btn-pill w-full sm:w-auto px-8 py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm sm:text-base shadow-xl shadow-sky-500/25"
+                    class="openRegisterBtn btn-pill w-full sm:w-auto px-8 py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm sm:text-base shadow-xl shadow-sky-500/25 cursor-pointer"
                 >
                     Reportar Objeto Perdido
                 </button>
                 <button
                     type="button"
-                    class="openLoginBtn btn-pill w-full sm:w-auto px-8 py-4 theme-card border font-bold text-sm sm:text-base theme-text-primary hover:border-sky-500"
+                    class="openLoginBtn btn-pill w-full sm:w-auto px-8 py-4 theme-card border font-bold text-sm sm:text-base theme-text-primary hover:border-sky-500 cursor-pointer"
                 >
                     Acceso Personal de Seguridad
                 </button>
             </div>
 
-            <!-- Previsualización de flujo (Corregido a tonos limpios y estilizados) -->
+            <!-- Previsualización de flujo -->
             <div class="mt-14 p-4 sm:p-6 theme-card border rounded-3xl max-w-4xl mx-auto shadow-xl">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
                     
@@ -175,7 +175,7 @@
                     </div>
                 </div>
 
-                <!-- Tarjeta 2: Tiendas Departamentales (IMAGEN ACTUALIZADA) -->
+                <!-- Tarjeta 2: Tiendas Departamentales -->
                 <div class="theme-card area-card border rounded-3xl overflow-hidden shadow-lg">
                     <img src="https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=600&q=80" alt="Tiendas y pasillos" class="w-full h-44 object-cover">
                     <div class="p-5">
@@ -342,14 +342,14 @@
                     <button
                         type="submit"
                         id="registerSubmit"
-                        class="btn-pill w-full py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-500/20"
+                        class="btn-pill w-full py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-500/20 cursor-pointer"
                     >
                         Crear Cuenta y Continuar
                     </button>
 
                     <div class="text-center pt-2">
                         <span class="text-xs theme-text-muted">¿Ya tienes una cuenta creada?</span>
-                        <button type="button" class="openLoginBtn text-xs font-bold text-sky-600 hover:underline ml-1">
+                        <button type="button" class="openLoginBtn text-xs font-bold text-sky-600 hover:underline ml-1 cursor-pointer">
                             Inicia sesión aquí
                         </button>
                     </div>
@@ -369,7 +369,7 @@
     <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div class="theme-card border rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
             
-            <button id="closeAuthModal" class="absolute top-5 right-5 theme-text-muted hover:theme-text-primary p-2 text-lg">
+            <button id="closeAuthModal" class="absolute top-5 right-5 theme-text-muted hover:theme-text-primary p-2 text-lg cursor-pointer">
                 ✕
             </button>
 
@@ -415,14 +415,14 @@
                     <button
                         type="submit"
                         id="loginSubmit"
-                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md shadow-sky-500/20"
+                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md shadow-sky-500/20 cursor-pointer"
                     >
                         Iniciar Sesión
                     </button>
 
                     <div class="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
                         <span class="text-xs theme-text-muted">¿No tienes cuenta de visitante?</span>
-                        <button type="button" id="toggleToRegister" class="text-xs font-bold text-sky-600 hover:underline ml-1">
+                        <button type="button" id="toggleToRegister" class="text-xs font-bold text-sky-600 hover:underline ml-1 cursor-pointer">
                             Crear una cuenta aquí
                         </button>
                     </div>
@@ -512,14 +512,14 @@
                     <button
                         type="submit"
                         id="modalRegisterSubmit"
-                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 mt-2"
+                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 mt-2 cursor-pointer"
                     >
                         Crear Cuenta y Continuar
                     </button>
 
                     <div class="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
                         <span class="text-xs theme-text-muted">¿Ya tienes cuenta?</span>
-                        <button type="button" id="toggleToLogin" class="text-xs font-bold text-sky-600 hover:underline ml-1">
+                        <button type="button" id="toggleToLogin" class="text-xs font-bold text-sky-600 hover:underline ml-1 cursor-pointer">
                             Iniciar sesión
                         </button>
                     </div>
@@ -555,7 +555,7 @@
                     <button
                         id="refreshBtn"
                         type="button"
-                        class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 theme-card theme-text-secondary hover:theme-text-primary text-xs flex items-center gap-1.5"
+                        class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 theme-card theme-text-secondary hover:theme-text-primary text-xs flex items-center gap-1.5 cursor-pointer"
                         title="Recargar datos"
                     >
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -565,7 +565,7 @@
                     <button
                         id="logoutBtn"
                         type="button"
-                        class="px-3.5 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-all"
+                        class="px-3.5 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-all cursor-pointer"
                     >
                         Cerrar Sesión
                     </button>
@@ -614,7 +614,7 @@
                                 <select
                                     id="category"
                                     required
-                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all cursor-pointer"
                                 >
                                     <option value="Billeteras y Documentos">Billeteras y Documentos</option>
                                     <option value="Smartphones y Tablets">Smartphones y Tablets</option>
@@ -645,7 +645,7 @@
                                 <select
                                     id="zone"
                                     required
-                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all cursor-pointer"
                                 >
                                     <option value="Patio de Comidas (Piso 3)">Patio de Comidas (Piso 3)</option>
                                     <option value="Zona de Cines (Piso 3)">Zona de Cines (Piso 3)</option>
@@ -712,7 +712,7 @@
                             <button
                                 type="submit"
                                 id="submitBtn"
-                                class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20"
+                                class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 cursor-pointer"
                             >
                                 <span id="submitBtnText">Guardar Reporte</span>
                             </button>
@@ -728,22 +728,22 @@
                         <button
                             id="tabItems"
                             type="button"
-                            class="px-4 py-2 rounded-full text-xs font-semibold bg-sky-600 text-white shadow-sm transition-all"
+                            class="px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm transition-all cursor-pointer"
                         >
                             Reportes Generales
                         </button>
                         <button
                             id="tabMatches"
                             type="button"
-                            class="px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5"
+                            class="px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer"
                         >
                             <span>Coincidencias</span>
                             <span id="matchCountBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white">0</span>
                         </button>
                     </div>
 
-                    <!-- Header de Sección + Filtros de Estado -->
-                    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <!-- Header de Sección + Filtros de Estado con Tamaño Uniforme -->
+                    <div class="mb-6 flex flex-col gap-3">
                         <div>
                             <h3 id="itemsTitle" class="text-xl font-bold font-heading theme-text-primary">
                                 Reportes Activos
@@ -753,32 +753,32 @@
                             </p>
                         </div>
 
-                        <!-- Filtros Rápidos (Todos, Pendientes, Validados, Entregados) -->
-                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                        <!-- Filtros Rápidos Uniformes -->
+                        <div class="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
                             <button
                                 type="button"
-                                class="filter-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                class="filter-btn active"
                                 data-filter="ALL"
                             >
-                                Todos
+                                📋 Todos
                             </button>
                             <button
                                 type="button"
-                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                class="filter-btn"
                                 data-filter="PENDING"
                             >
                                 ⏳ Pendientes
                             </button>
                             <button
                                 type="button"
-                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                class="filter-btn"
                                 data-filter="VALIDATED"
                             >
                                 ✓ Validados
                             </button>
                             <button
                                 type="button"
-                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                class="filter-btn"
                                 data-filter="DELIVERED"
                             >
                                 📦 Entregados

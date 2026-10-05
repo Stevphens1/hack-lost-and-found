@@ -33,24 +33,48 @@ window.currentItems = [];
 window.currentMatches = [];
 window.currentFilter = 'ALL'; // ALL | PENDING | VALIDATED | DELIVERED
 
-// Mapa de imágenes ilustrativas HD por categoría
+// ============================================================================
+// 3. IMÁGENES ESPECÍFICAS POR CATEGORÍA
+// ============================================================================
 const CATEGORY_IMAGES = {
-    'Billeteras y Documentos': 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=600&q=80',
-    'Smartphones y Tablets': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
-    'Mochilas y Bolsos': 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80',
-    'Joyas y Relojes': 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80',
-    'Prendas y Accesorios': 'https://images.unsplash.com/photo-1551028719-00167b16eac5?auto=format&fit=crop&w=600&q=80',
-    'Laptops y Tecnología': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=600&q=80',
-    'Llaves': 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=600&q=80',
-    'Otros': 'https://images.unsplash.com/photo-1584905066893-7d5c142ba4e1?auto=format&fit=crop&w=600&q=80'
+    wallet: 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=600&q=80',
+    smartphone: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=600&q=80',
+    backpack: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=600&q=80',
+    jewelry: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?auto=format&fit=crop&w=600&q=80',
+    clothing: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
+    laptop: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=600&q=80',
+    keys: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?auto=format&fit=crop&w=600&q=80',
+    other: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?auto=format&fit=crop&w=600&q=80'
 };
 
 function getCategoryPlaceholderImage(category) {
-    return CATEGORY_IMAGES[category] || CATEGORY_IMAGES['Otros'];
+    const cat = String(category || '').toLowerCase();
+    if (cat.includes('billetera') || cat.includes('wallet') || cat.includes('document')) {
+        return CATEGORY_IMAGES.wallet;
+    }
+    if (cat.includes('smart') || cat.includes('celular') || cat.includes('phone') || cat.includes('tablet')) {
+        return CATEGORY_IMAGES.smartphone;
+    }
+    if (cat.includes('mochila') || cat.includes('bolso') || cat.includes('bag') || cat.includes('backpack')) {
+        return CATEGORY_IMAGES.backpack;
+    }
+    if (cat.includes('joya') || cat.includes('reloj') || cat.includes('watch') || cat.includes('jewelry')) {
+        return CATEGORY_IMAGES.jewelry;
+    }
+    if (cat.includes('prenda') || cat.includes('ropa') || cat.includes('clothing') || cat.includes('polo') || cat.includes('casaca')) {
+        return CATEGORY_IMAGES.clothing;
+    }
+    if (cat.includes('laptop') || cat.includes('comput') || cat.includes('tech') || cat.includes('electronic')) {
+        return CATEGORY_IMAGES.laptop;
+    }
+    if (cat.includes('llave') || cat.includes('key')) {
+        return CATEGORY_IMAGES.keys;
+    }
+    return CATEGORY_IMAGES.other;
 }
 
 // ============================================================================
-// 3. CONTROLADOR DE TEMA (CLARO / OSCURO)
+// 4. CONTROLADOR DE TEMA (CLARO / OSCURO)
 // ============================================================================
 function initTheme() {
     const savedTheme = localStorage.getItem('theme') || 'light';
@@ -99,7 +123,7 @@ function toggleTheme() {
 }
 
 // ============================================================================
-// 4. UTILIDADES & SANITIZACIÓN
+// 5. UTILIDADES & SANITIZACIÓN
 // ============================================================================
 function escapeHtml(value) {
     return String(value ?? '')
@@ -132,27 +156,27 @@ function getStatusInfo(status) {
     const value = String(status || 'REGISTERED').toUpperCase();
     const statuses = {
         REGISTERED: {
-            label: 'En Búsqueda / Pendiente',
-            css: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+            label: 'Registrado',
+            css: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
         },
         VALIDATED: {
-            label: 'Propiedad Validada',
-            css: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30'
+            label: 'Propiedad validada',
+            css: 'bg-blue-500/15 text-blue-500 border-blue-500/30 font-semibold'
         },
         DELIVERED: {
-            label: 'Entregado con Éxito',
-            css: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+            label: 'Entregado',
+            css: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-semibold'
         },
         CLOSED: {
             label: 'Cerrado',
-            css: 'bg-slate-500/15 text-slate-500 border-slate-500/30'
+            css: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
         }
     };
-    return statuses[value] || { label: value, css: 'bg-slate-500/15 text-slate-500 border-slate-500/30' };
+    return statuses[value] || { label: value, css: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
 }
 
 // ============================================================================
-// 5. CLIENTE HTTP AUTENTICADO CON COGNITO JWT
+// 6. CLIENTE HTTP AUTENTICADO CON COGNITO JWT
 // ============================================================================
 function getToken() {
     if (!window.activeSession) {
@@ -195,7 +219,7 @@ async function apiFetch(url, options = {}) {
 }
 
 // ============================================================================
-// 6. HELPER DE COINCIDENCIAS (MATCHES)
+// 7. HELPER DE COINCIDENCIAS (MATCHES)
 // ============================================================================
 function matchesForItem(itemID) {
     return window.currentMatches.filter(
@@ -216,28 +240,28 @@ function validatedMatchForItem(itemID) {
 }
 
 // ============================================================================
-// 7. RENDERIZADO DE INTERFAZ DEL CLIENTE
+// 8. RENDERIZADO DE INTERFAZ DEL CLIENTE (DISEÑO EXACTO A CAPTURA 1)
 // ============================================================================
 function buildCustomerMatchHtml(item) {
     const validated = validatedMatchForItem(item.itemID);
 
     if (validated || String(item.status || '').toUpperCase() === 'VALIDATED') {
         return `
-            <div class="mt-3 p-3.5 rounded-2xl border border-blue-500/30 bg-blue-500/5 theme-card">
-                <div class="flex items-center justify-between">
-                    <p class="text-xs sm:text-sm font-semibold text-blue-600 dark:text-blue-400">
-                        ✓ ¡Objeto encontrado y validado!
+            <div class="mt-3.5 p-3.5 rounded-2xl border border-blue-500/30 bg-blue-500/5 theme-card">
+                <div class="flex items-center justify-between gap-2">
+                    <p class="text-xs sm:text-sm font-bold text-blue-600 dark:text-blue-400">
+                        ✓ Propiedad validada
                     </p>
                     <button 
                         type="button"
                         onclick="showPickupModal('${escapeHtml(item.itemID)}', '${escapeHtml(item.title)}')"
-                        class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-full shadow-sm transition-all"
+                        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full shadow-md shadow-blue-500/20 transition-all shrink-0"
                     >
                         Ver Cita & QR
                     </button>
                 </div>
-                <p class="text-xs theme-text-muted mt-1.5">
-                    El personal de seguridad confirmó la coincidencia. Presenta tu código QR y DNI para recogerlo.
+                <p class="text-xs theme-text-secondary mt-1">
+                    Seguridad confirmó la coincidencia de este reporte.
                 </p>
             </div>
         `;
@@ -247,9 +271,9 @@ function buildCustomerMatchHtml(item) {
 
     if (matches.length === 0) {
         return `
-            <div class="mt-3 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-sky-500/5">
-                <p class="text-xs theme-text-muted">
-                    Buscando coincidencias con nuevos reportes de seguridad...
+            <div class="mt-3.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <p class="text-xs theme-text-muted text-center">
+                    Sin coincidencias detectadas por el momento.
                 </p>
             </div>
         `;
@@ -258,17 +282,17 @@ function buildCustomerMatchHtml(item) {
     const bestScore = Math.max(...matches.map(m => Number(m.matchScore || 0)));
 
     return `
-        <div class="mt-3 p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+        <div class="mt-3.5 p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
             <div class="flex items-center justify-between gap-3">
                 <p class="text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400">
-                    🔗 Posible coincidencia detectada
+                    🔗 Posible coincidencia encontrada
                 </p>
-                <span class="text-sm sm:text-base font-bold text-amber-600 dark:text-amber-300">
-                    ${bestScore}% similitud
+                <span class="text-sm font-extrabold text-amber-600 dark:text-amber-300">
+                    ${bestScore}%
                 </span>
             </div>
-            <p class="text-xs theme-text-secondary mt-1.5">
-                El sistema detectó un objeto compatible. Seguridad lo revisará en breve.
+            <p class="text-xs theme-text-secondary mt-1">
+                Pendiente de validación por Seguridad.
             </p>
         </div>
     `;
@@ -287,63 +311,69 @@ function buildItemCard(item) {
 
         if (validated) {
             matchSection = `
-                <div class="mt-3 p-2.5 rounded-2xl border border-blue-500/30 bg-blue-500/5">
+                <div class="mt-3.5 p-3 rounded-2xl border border-blue-500/30 bg-blue-500/5">
                     <p class="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                        ✓ Coincidencia validada por Seguridad
+                        ✓ Coincidencia validada
                     </p>
                 </div>
             `;
         } else if (possible.length > 0) {
             const best = Math.max(...possible.map(m => Number(m.matchScore || 0)));
             matchSection = `
-                <div class="mt-3 p-2.5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+                <div class="mt-3.5 p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5">
                     <p class="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                        ${possible.length} coincidencia(s) (${best}% max)
+                        ${possible.length} posible(s) coincidencia(s) (${best}% max)
                     </p>
                 </div>
             `;
         } else {
             matchSection = `
-                <div class="mt-3 p-2 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
-                    <p class="text-xs theme-text-muted">Sin coincidencias detectadas.</p>
+                <div class="mt-3.5 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                    <p class="text-xs theme-text-muted text-center">Sin coincidencias detectadas.</p>
                 </div>
             `;
         }
     }
 
-    // Imagen del item o imagen ilustrativa por categoría
+    // Banner de la tarjeta
     const bannerUrl = item.imageUrl || getCategoryPlaceholderImage(item.category);
-    const imageHtml = `
-        <div class="relative w-full h-44 overflow-hidden rounded-t-3xl">
-            <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-            <span class="absolute top-3 right-3 text-xs font-bold px-3 py-1 rounded-full shadow-md ${
-                isFound ? 'bg-emerald-500 text-white' : 'bg-sky-600 text-white'
+    const headerHtml = `
+        <div class="relative w-full h-36 overflow-hidden rounded-t-3xl bg-slate-100 dark:bg-slate-800/80">
+            <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+            
+            <!-- Badge Perdido / Encontrado -->
+            <span class="absolute top-3 right-3 text-[11px] font-bold px-3 py-1 rounded-full shadow-md ${
+                isFound
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-amber-500 text-white'
             }">
-                ${isFound ? '📦 Encontrado (Staff)' : '🔎 Perdido (Cliente)'}
-            </span>
-            <span class="absolute bottom-3 left-3 text-xs font-medium text-white/90 bg-black/40 backdrop-blur-sm px-2.5 py-0.5 rounded-full">
-                ${escapeHtml(item.category || 'General')}
+                ${isFound ? 'Encontrado' : 'Perdido'}
             </span>
         </div>
     `;
 
     return `
-        <article class="theme-card border rounded-3xl overflow-hidden shadow-md flex flex-col justify-between group hover:shadow-xl transition-all">
+        <article class="theme-card border rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all">
             <div>
-                ${imageHtml}
+                ${headerHtml}
 
                 <div class="p-5">
-                    <div class="flex justify-between items-start gap-2">
-                        <h3 class="font-bold text-base theme-text-primary">
-                            ${escapeHtml(item.title || 'Sin título')}
-                        </h3>
-                        <span class="border text-[11px] font-semibold px-2.5 py-0.5 rounded-full whitespace-nowrap ${status.css}">
+                    <div class="flex justify-between items-start gap-3">
+                        <div>
+                            <h3 class="font-extrabold text-base theme-text-primary">
+                                ${escapeHtml(item.title || 'Sin título')}
+                            </h3>
+                            <p class="text-xs theme-text-muted mt-0.5">
+                                ${escapeHtml(item.category || 'General')}
+                            </p>
+                        </div>
+                        <span class="border text-[11px] px-2.5 py-0.5 rounded-full whitespace-nowrap ${status.css}">
                             ${status.label}
                         </span>
                     </div>
 
-                    <p class="text-xs theme-text-secondary mt-2.5 line-clamp-3 leading-relaxed">
+                    <p class="text-xs theme-text-secondary mt-3 leading-relaxed">
                         ${escapeHtml(item.description || 'Sin descripción')}
                     </p>
 
@@ -376,7 +406,7 @@ function renderItems() {
 
     let items = [...window.currentItems];
 
-    // Aplicar Filtro
+    // Aplicar Filtros
     if (window.currentFilter === 'PENDING') {
         items = items.filter(i => String(i.status || '').toUpperCase() === 'REGISTERED');
     } else if (window.currentFilter === 'VALIDATED') {
@@ -388,7 +418,7 @@ function renderItems() {
     if (items.length === 0) {
         itemsGrid.innerHTML = `
             <div class="col-span-full theme-card border rounded-3xl p-10 text-center">
-                <p class="text-sm theme-text-muted">No hay reportes que coincidan con este filtro.</p>
+                <p class="text-sm theme-text-muted">No hay reportes para este filtro.</p>
             </div>
         `;
         return;
@@ -406,7 +436,7 @@ function renderItems() {
 }
 
 // ============================================================================
-// 8. RENDERIZADO DE COINCIDENCIAS (VISTA DE STAFF / SEGURIDAD)
+// 9. RENDERIZADO DE COINCIDENCIAS (STAFF / SEGURIDAD)
 // ============================================================================
 function buildMatchCandidate(match) {
     const lost = match.lostItem || {};
@@ -418,14 +448,14 @@ function buildMatchCandidate(match) {
     let actionHtml = '';
     if (isValidated) {
         actionHtml = `
-            <div class="mt-4 px-3.5 py-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-semibold flex items-center justify-between">
-                <span>✓ Coincidencia validada & Notificación enviada</span>
+            <div class="mt-4 px-3.5 py-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-semibold">
+                ✓ Coincidencia validada & Correo enviado
             </div>
         `;
     } else if (isRejected) {
         actionHtml = `
             <div class="mt-4 px-3.5 py-2 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 theme-text-muted text-xs">
-                ✕ Coincidencia descartada
+                Coincidencia descartada
             </div>
         `;
     } else {
@@ -433,14 +463,14 @@ function buildMatchCandidate(match) {
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 <button
                     type="button"
-                    class="validateMatchBtn bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-2xl transition-all text-xs shadow-sm"
+                    class="validateMatchBtn bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-2xl transition-all text-xs shadow-sm cursor-pointer"
                     data-match-id="${escapeHtml(match.matchID)}"
                 >
-                    ✓ Aprobar Coincidencia
+                    ✓ Validar
                 </button>
                 <button
                     type="button"
-                    class="rejectMatchBtn bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-medium py-2.5 rounded-2xl transition-all text-xs"
+                    class="rejectMatchBtn bg-rose-600/10 hover:bg-rose-600/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 font-semibold py-2.5 rounded-2xl transition-all text-xs cursor-pointer"
                     data-match-id="${escapeHtml(match.matchID)}"
                 >
                     ✕ Descartar
@@ -468,7 +498,7 @@ function buildMatchCandidate(match) {
                     }">
                         ${score}%
                     </div>
-                    <span class="text-[10px] theme-text-muted">coincidencia</span>
+                    <span class="text-[10px] theme-text-muted">criterios</span>
                 </div>
             </div>
 
@@ -568,7 +598,7 @@ function renderStaffMatches() {
 
                     <div class="p-6">
                         <p class="text-xs font-semibold uppercase tracking-wider theme-text-muted mb-4">
-                            Reportes de pérdida compatibles:
+                            Posibles reportes de pérdida relacionados:
                         </p>
                         <div class="space-y-3">
                             ${candidates.map(buildMatchCandidate).join('')}
@@ -579,73 +609,11 @@ function renderStaffMatches() {
         })
         .join('');
 
-    // Listeners Validar
-    document.querySelectorAll('.validateMatchBtn').forEach(button => {
-        button.addEventListener('click', async function() {
-            const matchID = this.dataset.matchId;
-            if (!matchID) return;
-
-            const confirmed = window.confirm(
-                '¿Confirmas la validez de este reclamo?\n\n' +
-                '• El reporte del cliente se marcará como VALIDADO.\n' +
-                '• Se enviará un correo automático vía Amazon SES con las instrucciones de entrega.'
-            );
-            if (!confirmed) return;
-
-            const originalContent = this.innerHTML;
-            this.disabled = true;
-            this.innerHTML = `Validando...`;
-
-            try {
-                const validateUrl = `${MATCHES_URL}/${encodeURIComponent(matchID)}/validate`;
-                await apiFetch(validateUrl, {
-                    method: 'PATCH',
-                    body: JSON.stringify({})
-                });
-
-                alert('✓ Coincidencia validada con éxito. Correo de notificación enviado.');
-                await loadData();
-                renderStaffMatches();
-            } catch (error) {
-                console.error('Error validando match:', error);
-                alert('No se pudo validar: ' + error.message);
-                this.disabled = false;
-                this.innerHTML = originalContent;
-            }
-        });
-    });
-
-    // Listeners Descartar
-    document.querySelectorAll('.rejectMatchBtn').forEach(button => {
-        button.addEventListener('click', async function() {
-            const matchID = this.dataset.matchId;
-            if (!matchID) return;
-
-            const confirmed = window.confirm('¿Descartar esta coincidencia?');
-            if (!confirmed) return;
-
-            try {
-                const validateUrl = `${MATCHES_URL}/${encodeURIComponent(matchID)}/validate`;
-                await apiFetch(validateUrl, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ action: 'REJECT' })
-                });
-
-                alert('✕ Coincidencia descartada.');
-                await loadData();
-                renderStaffMatches();
-            } catch (error) {
-                console.error('Error descartando:', error);
-                alert('Error al descartar: ' + error.message);
-            }
-        });
-    });
-
     if (window.lucide) lucide.createIcons();
 }
 
 // ============================================================================
-// 9. CARGA DE DATOS DESDE DYNAMODB / API GATEWAY
+// 10. CARGA DE DATOS DESDE DYNAMODB / API GATEWAY
 // ============================================================================
 async function loadData() {
     const itemsGrid = document.getElementById('itemsGrid');
@@ -681,7 +649,7 @@ async function loadData() {
 }
 
 // ============================================================================
-// 10. MODAL DE CITA Y CÓDIGO QR PARA RECOJO (CLIENTE & STAFF)
+// 11. MODAL DE CITA & CÓDIGO QR 100% VISIBLE (CLIENTE & STAFF)
 // ============================================================================
 function showPickupModal(itemId, itemTitle) {
     let modal = document.getElementById('pickupModal');
@@ -692,61 +660,53 @@ function showPickupModal(itemId, itemTitle) {
         document.body.appendChild(modal);
     }
 
-    const qrData = JSON.stringify({
-        type: 'LOST_AND_FOUND_VOUCHER',
-        id: itemId,
-        user: window.currentUserData?.email || 'Usuario',
-        timestamp: Date.now()
-    });
+    const qrData = `LOST_FOUND_VALIDATION|ID:${itemId}|USER:${window.currentUserData?.email || 'Usuario'}|TIME:${Date.now()}`;
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}&margin=1`;
 
     modal.innerHTML = `
         <div class="theme-card border rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <button onclick="closePickupModal()" class="absolute top-4 right-4 theme-text-muted hover:theme-text-primary p-2">
+            <button onclick="closePickupModal()" class="absolute top-4 right-4 theme-text-muted hover:theme-text-primary p-2 text-lg">
                 ✕
             </button>
             <div class="text-center">
                 <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
                     <span class="text-2xl">🎫</span>
                 </div>
-                <h3 class="text-xl font-bold theme-text-primary">Pase de Recojo Seguro</h3>
+                <h3 class="text-xl font-extrabold theme-text-primary font-heading">Pase de Recojo Seguro</h3>
                 <p class="text-xs theme-text-muted mt-1">${escapeHtml(itemTitle)}</p>
             </div>
 
+            <!-- Contenedor QR Blanco con Imagen Garantizada -->
             <div class="my-6 text-center">
-                <div class="qr-container mx-auto">
-                    <canvas id="qrCanvas"></canvas>
+                <div class="qr-container mx-auto p-3 bg-white rounded-2xl border border-slate-200 shadow-sm inline-block">
+                    <img src="${qrImageUrl}" alt="Código QR de Validación" class="w-44 h-44 mx-auto rounded-lg" />
                 </div>
-                <p class="text-[11px] theme-text-muted mt-2 font-mono">Token de Verificación Anti-Fraude</p>
+                <p class="text-[11px] theme-text-muted mt-2.5 font-mono font-medium">Token de Verificación Anti-Fraude</p>
             </div>
 
-            <div class="bg-slate-50 dark:bg-slate-900/60 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                <div class="flex justify-between">
-                    <span class="theme-text-muted">📍 Lugar de entrega:</span>
-                    <span class="font-bold theme-text-primary">Módulo Central de Seguridad (Piso 1)</span>
+            <!-- Recuadro de Instrucciones con Alto Contraste (Sin grises apagados) -->
+            <div class="bg-sky-50 dark:bg-slate-900 border border-sky-200 dark:border-slate-700 rounded-2xl p-4 text-xs space-y-2.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">📍 Lugar de entrega:</span>
+                    <span class="font-bold text-slate-900 dark:text-white">Módulo Central (Piso 1)</span>
                 </div>
-                <div class="flex justify-between">
-                    <span class="theme-text-muted">🕒 Horario de atención:</span>
-                    <span class="font-bold theme-text-primary">Lun a Dom: 10:00 AM - 9:00 PM</span>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">🕒 Horario de atención:</span>
+                    <span class="font-bold text-slate-900 dark:text-white">Lun a Dom: 10:00 AM - 9:00 PM</span>
                 </div>
-                <div class="flex justify-between">
-                    <span class="theme-text-muted">📄 Requisito obligatorio:</span>
-                    <span class="font-bold text-emerald-500">DNI / Documento de Identidad</span>
+                <div class="flex items-center justify-between">
+                    <span class="text-slate-600 dark:text-slate-400 font-medium">📄 Requisito obligatorio:</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400">DNI / Documento de Identidad</span>
                 </div>
             </div>
 
-            <button onclick="closePickupModal()" class="btn-pill w-full mt-6 py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-sm transition-all shadow-md">
+            <button onclick="closePickupModal()" class="btn-pill w-full mt-6 py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm transition-all shadow-md shadow-sky-500/20">
                 Entendido
             </button>
         </div>
     `;
 
     modal.classList.remove('hidden');
-
-    if (window.QRCode) {
-        QRCode.toCanvas(document.getElementById('qrCanvas'), qrData, { width: 180, margin: 1 }, function (error) {
-            if (error) console.error(error);
-        });
-    }
 }
 
 function closePickupModal() {
@@ -755,7 +715,7 @@ function closePickupModal() {
 }
 
 // ============================================================================
-// 11. GESTIÓN DE SESIÓN & COGNITO AUTH
+// 12. GESTIÓN DE SESIÓN & COGNITO AUTH
 // ============================================================================
 function showApplication(session) {
     window.activeSession = session;
@@ -766,6 +726,16 @@ function showApplication(session) {
     const groups = normalizeGroups(rawGroups);
     const isStaff = groups.includes('STAFF');
     window.currentUserIsStaff = isStaff;
+
+    // Reset de filtro a "Todos"
+    window.currentFilter = 'ALL';
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn.dataset.filter === 'ALL') {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
 
     // Actualizar vistas
     document.getElementById('landingView')?.classList.add('hidden');
@@ -780,8 +750,8 @@ function showApplication(session) {
     if (roleBadge) {
         roleBadge.textContent = isStaff ? 'Personal de Seguridad (Staff)' : 'Visitante Registrado';
         roleBadge.className = isStaff
-            ? 'text-xs font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full'
-            : 'text-xs font-semibold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full';
+            ? 'text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full'
+            : 'text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full';
     }
 
     const formTitle = document.getElementById('formTitle');
@@ -793,6 +763,8 @@ function showApplication(session) {
     const staffTabs = document.getElementById('staffTabs');
     const itemsView = document.getElementById('itemsView');
     const matchesView = document.getElementById('matchesView');
+    const tabItems = document.getElementById('tabItems');
+    const tabMatches = document.getElementById('tabMatches');
 
     if (isStaff) {
         if (formTitle) formTitle.textContent = 'Registrar Objeto Encontrado';
@@ -814,6 +786,12 @@ function showApplication(session) {
         if (matchesView) matchesView.classList.add('hidden');
     }
 
+    // Resetear pestañas staff
+    if (tabItems && tabMatches) {
+        tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
+        tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
+    }
+
     loadData();
 }
 
@@ -828,7 +806,7 @@ function showLanding() {
 }
 
 // ============================================================================
-// 12. INICIALIZACIÓN DE FORMULARIOS Y EVENT LISTENERS
+// 13. INICIALIZACIÓN DE FORMULARIOS Y EVENT LISTENERS
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
@@ -858,13 +836,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', () => openModal('login'));
     });
 
-    // Botones de Reportar / Registrarse (Scroll a la sección de registro o abren modal en modo Register)
+    // Botones de Reportar / Registrarse (Scroll a la sección de registro)
     document.querySelectorAll('.openRegisterBtn').forEach(btn => {
         btn.addEventListener('click', () => {
             const registerSection = document.getElementById('register');
-            if (registerSection && !document.getElementById('appView').classList.contains('hidden')) {
-                // Ya en app
-            } else if (registerSection) {
+            if (registerSection && document.getElementById('appView').classList.contains('hidden')) {
                 registerSection.scrollIntoView({ behavior: 'smooth' });
             } else {
                 openModal('register');
@@ -1059,7 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Filtros de Estado para Reportes
+    // 6. Filtros de Estado para Reportes (Iluminación limpia & Alto Contraste)
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -1069,7 +1045,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 7. Vista previa de foto
+    // 7. Delegación de Eventos para Botones de Staff (Validar / Descartar)
+    const matchesGrid = document.getElementById('matchesGrid');
+    if (matchesGrid) {
+        matchesGrid.addEventListener('click', async function(e) {
+            // Validar Match
+            const validateBtn = e.target.closest('.validateMatchBtn');
+            if (validateBtn) {
+                const matchID = validateBtn.dataset.matchId;
+                if (!matchID) return;
+
+                const confirmed = window.confirm(
+                    '¿Confirmas la validez de este reclamo?\n\n' +
+                    '• El reporte del cliente se marcará como VALIDADO.\n' +
+                    '• Se enviará un correo automático vía Amazon SES con las instrucciones de entrega.'
+                );
+                if (!confirmed) return;
+
+                const originalText = validateBtn.innerHTML;
+                validateBtn.disabled = true;
+                validateBtn.innerHTML = 'Validando...';
+
+                try {
+                    const validateUrl = `${MATCHES_URL}/${encodeURIComponent(matchID)}/validate`;
+                    await apiFetch(validateUrl, {
+                        method: 'PATCH',
+                        body: JSON.stringify({})
+                    });
+
+                    alert('✓ Coincidencia validada con éxito. Correo de notificación enviado.');
+                    await loadData();
+                    renderStaffMatches();
+                } catch (error) {
+                    console.error('Error validando match:', error);
+                    alert('No se pudo validar: ' + error.message);
+                    validateBtn.disabled = false;
+                    validateBtn.innerHTML = originalText;
+                }
+                return;
+            }
+
+            // Descartar Match
+            const rejectBtn = e.target.closest('.rejectMatchBtn');
+            if (rejectBtn) {
+                const matchID = rejectBtn.dataset.matchId;
+                if (!matchID) return;
+
+                const confirmed = window.confirm('¿Descartar esta coincidencia?');
+                if (!confirmed) return;
+
+                try {
+                    const validateUrl = `${MATCHES_URL}/${encodeURIComponent(matchID)}/validate`;
+                    await apiFetch(validateUrl, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ action: 'REJECT' })
+                    });
+
+                    alert('✕ Coincidencia descartada.');
+                    await loadData();
+                    renderStaffMatches();
+                } catch (error) {
+                    console.error('Error descartando:', error);
+                    alert('Error al descartar: ' + error.message);
+                }
+                return;
+            }
+        });
+    }
+
+    // 8. Vista previa de foto
     const photoInput = document.getElementById('photo');
     const photoPlaceholder = document.getElementById('photoPlaceholder');
     const photoPreview = document.getElementById('photoPreview');
@@ -1093,7 +1137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 8. Formulario de Creación de Reportes (Items)
+    // 9. Formulario de Creación de Reportes (Items)
     const itemForm = document.getElementById('itemForm');
     if (itemForm) {
         itemForm.addEventListener('submit', async function(e) {
@@ -1180,7 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 9. Pestañas de Staff (Items vs Matches)
+    // 10. Pestañas de Staff (Items vs Matches)
     const tabItems = document.getElementById('tabItems');
     const tabMatches = document.getElementById('tabMatches');
     const itemsView = document.getElementById('itemsView');
@@ -1190,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabItems.addEventListener('click', () => {
             itemsView?.classList.remove('hidden');
             matchesView?.classList.add('hidden');
-            tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold bg-sky-600 text-white shadow-sm';
+            tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
             tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
         });
 
@@ -1198,7 +1242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             itemsView?.classList.add('hidden');
             matchesView?.classList.remove('hidden');
             tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
-            tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold bg-sky-600 text-white shadow-sm';
+            tabMatches.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
             renderStaffMatches();
         });
     }
