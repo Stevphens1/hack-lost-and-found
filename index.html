@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lost & Found Portal - Centro Comercial</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Amazon Cognito SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+    <!-- Custom CSS (Separated) -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="light-theme antialiased min-h-screen">
+
+    <!-- ========================================================= -->
+    <!-- NAVBAR SUPERIOR & SWITCH DE TEMA CLARO / OSCURO          -->
+    <!-- ========================================================= -->
+    <header class="sticky top-0 z-40 nav-blur border-b transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            
+            <!-- Logo & Brand -->
+            <a href="#" class="flex items-center gap-3 group">
+                <div class="w-11 h-11 bg-sky-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform">
+                    <i data-lucide="search-check" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <span class="font-heading font-extrabold text-lg tracking-tight theme-text-primary block leading-none">
+                        Lost & Found
+                    </span>
+                    <span class="text-xs theme-text-muted font-medium">Mall Intelligence Hub</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium theme-text-secondary">
+                <a href="#hero" class="hover:text-sky-600 transition-colors">Inicio</a>
+                <a href="#areas" class="hover:text-sky-600 transition-colors">Áreas del Mall</a>
+                <a href="#metrics" class="hover:text-sky-600 transition-colors">Impacto</a>
+                <a href="#register" class="hover:text-sky-600 transition-colors">Registro</a>
+            </nav>
+
+            <!-- Actions & Theme Toggle -->
+            <div class="flex items-center gap-3">
+                
+                <!-- Botón de Modo Claro / Oscuro (Superior) -->
+                <button
+                    id="themeToggleBtn"
+                    type="button"
+                    class="p-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 theme-text-secondary hover:theme-text-primary hover:border-sky-400 transition-all shadow-sm flex items-center gap-2"
+                    title="Cambiar tema"
+                >
+                    <i id="themeIcon" data-lucide="moon" class="w-4 h-4 text-sky-500"></i>
+                    <span id="themeText" class="text-xs font-semibold hidden sm:inline">Modo Oscuro</span>
+                </button>
+
+                <!-- Auth Buttons -->
+                <button
+                    type="button"
+                    class="openLoginBtn px-4 py-2 text-xs sm:text-sm font-semibold theme-text-secondary hover:theme-text-primary transition-colors"
+                >
+                    Iniciar Sesión
+                </button>
+
+                <button
+                    type="button"
+                    class="openRegisterBtn btn-pill px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20"
+                >
+                    Reportar Objeto
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========================================================= -->
+    <!-- VISTA PÚBLICA / LANDING PAGE (ESTILO SYNC LABS)           -->
+    <!-- ========================================================= -->
+    <main id="landingView" class="w-full">
+
+        <!-- 1. HERO SECTION -->
+        <section id="hero" class="hero-section pt-16 pb-20 px-4 sm:px-6 lg:px-8 text-center max-w-5xl mx-auto">
+            
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full badge-glow-blue text-xs font-semibold mb-6">
+                <span>✨</span>
+                <span>Plataforma Oficial de Custodia y Matching para Centros Comerciales</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight theme-text-primary font-heading leading-tight mb-6">
+                Recupera lo que perdiste en el Mall, <br class="hidden sm:inline">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-indigo-600">
+                    en tiempo récord.
+                </span>
+            </h1>
+
+            <p class="text-base sm:text-lg theme-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
+                Conectamos en segundos los reportes del personal de seguridad con las solicitudes de los visitantes mediante un motor de coincidencias inteligente y seguro en AWS.
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button
+                    type="button"
+                    class="openRegisterBtn btn-pill w-full sm:w-auto px-8 py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm sm:text-base shadow-xl shadow-sky-500/25"
+                >
+                    Reportar Objeto Perdido
+                </button>
+                <button
+                    type="button"
+                    class="openLoginBtn btn-pill w-full sm:w-auto px-8 py-4 theme-card border font-bold text-sm sm:text-base theme-text-primary hover:border-sky-500"
+                >
+                    Acceso Personal de Seguridad
+                </button>
+            </div>
+
+            <!-- Previsualización de flujo (Corregido a tonos limpios y estilizados) -->
+            <div class="mt-14 p-4 sm:p-6 theme-card border rounded-3xl max-w-4xl mx-auto shadow-xl">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 text-left">
+                    
+                    <div class="flex items-start gap-3.5 p-4 rounded-2xl hero-step-card transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">1</div>
+                        <div>
+                            <h4 class="font-bold text-sm theme-text-primary">Reporte Rápido</h4>
+                            <p class="text-xs theme-text-secondary mt-1">Registra la zona, fecha y características del objeto extraviado.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3.5 p-4 rounded-2xl hero-step-card transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">2</div>
+                        <div>
+                            <h4 class="font-bold text-sm theme-text-primary">Matching Inteligente</h4>
+                            <p class="text-xs theme-text-secondary mt-1">AWS Lambda compara los hallazgos del staff con tu reporte.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3.5 p-4 rounded-2xl hero-step-card transition-all">
+                        <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">3</div>
+                        <div>
+                            <h4 class="font-bold text-sm theme-text-primary">Entrega con QR</h4>
+                            <p class="text-xs theme-text-secondary mt-1">Recibe un pase con código QR para recoger tu pertenencia en el módulo.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. SECCIÓN DE ÁREAS DEL MALL -->
+        <section id="areas" class="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <h2 class="text-3xl sm:text-4xl font-extrabold font-heading theme-text-primary mb-4">
+                    Cobertura en todas las zonas del Centro Comercial
+                </h2>
+                <p class="text-sm sm:text-base theme-text-secondary">
+                    Nuestro personal de seguridad monitorea y registra objetos recuperados en cada rincón del mall.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Tarjeta 1: Patio de Comidas -->
+                <div class="theme-card area-card border rounded-3xl overflow-hidden shadow-lg">
+                    <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=80" alt="Patio de comidas" class="w-full h-44 object-cover">
+                    <div class="p-5">
+                        <span class="text-xs font-bold text-sky-600 uppercase tracking-wider">Zona Gastronómica</span>
+                        <h3 class="text-base font-bold theme-text-primary mt-1">Patio de Comidas & Restaurantes</h3>
+                        <p class="text-xs theme-text-muted mt-2">Mesas centrales, barras de comida rápida y cafeterías.</p>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 2: Tiendas Departamentales (IMAGEN ACTUALIZADA) -->
+                <div class="theme-card area-card border rounded-3xl overflow-hidden shadow-lg">
+                    <img src="https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=600&q=80" alt="Tiendas y pasillos" class="w-full h-44 object-cover">
+                    <div class="p-5">
+                        <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Niveles 1 y 2</span>
+                        <h3 class="text-base font-bold theme-text-primary mt-1">Tiendas & Pasillos Comerciales</h3>
+                        <p class="text-xs theme-text-muted mt-2">Probadores, bancos de descanso y áreas comerciales.</p>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 3: Estacionamiento -->
+                <div class="theme-card area-card border rounded-3xl overflow-hidden shadow-lg">
+                    <img src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=600&q=80" alt="Estacionamiento" class="w-full h-44 object-cover">
+                    <div class="p-5">
+                        <span class="text-xs font-bold text-emerald-600 uppercase tracking-wider">Subsuelo</span>
+                        <h3 class="text-base font-bold theme-text-primary mt-1">Estacionamientos & Accesos</h3>
+                        <p class="text-xs theme-text-muted mt-2">Niveles S1, S2, cajeros automáticos y rampas vehiculares.</p>
+                    </div>
+                </div>
+
+                <!-- Tarjeta 4: Cines y Entretenimiento -->
+                <div class="theme-card area-card border rounded-3xl overflow-hidden shadow-lg">
+                    <img src="https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80" alt="Cines" class="w-full h-44 object-cover">
+                    <div class="p-5">
+                        <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">Piso 3</span>
+                        <h3 class="text-base font-bold theme-text-primary mt-1">Cines & Zona de Juegos</h3>
+                        <p class="text-xs theme-text-muted mt-2">Salas de proyección, taquillas y áreas de entretenimiento infantil.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SECCIÓN DE MÉTRICAS & SOCIAL PROOF -->
+        <section id="metrics" class="py-20 px-4 sm:px-6 lg:px-8 bg-sky-500/5 border-y border-slate-200 dark:border-slate-800">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center max-w-2xl mx-auto mb-16">
+                    <span class="text-xs font-bold text-sky-600 uppercase tracking-widest">Confianza & Efectividad</span>
+                    <h2 class="text-3xl sm:text-4xl font-extrabold font-heading theme-text-primary mt-2">
+                        Impacto en cifras para nuestros visitantes
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
+                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
+                        <p class="text-3xl sm:text-5xl font-extrabold text-sky-600 font-heading">+1,250</p>
+                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Objetos Devueltos</p>
+                        <p class="text-xs theme-text-muted mt-1">Reclamados con éxito</p>
+                    </div>
+                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
+                        <p class="text-3xl sm:text-5xl font-extrabold text-emerald-600 font-heading">94%</p>
+                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tasa de Coincidencia</p>
+                        <p class="text-xs theme-text-muted mt-1">Precisión de matching</p>
+                    </div>
+                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
+                        <p class="text-3xl sm:text-5xl font-extrabold text-indigo-600 font-heading">&lt; 24h</p>
+                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tiempo de Respuesta</p>
+                        <p class="text-xs theme-text-muted mt-1">Notificación por correo</p>
+                    </div>
+                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
+                        <p class="text-3xl sm:text-5xl font-extrabold text-amber-500 font-heading">100%</p>
+                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Trazabilidad Segura</p>
+                        <p class="text-xs theme-text-muted mt-1">Validación anti-fraude</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. SECCIÓN DE REGISTRO / FORMULARIO SYNC LABS STYLE -->
+        <section id="register" class="py-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl sm:text-5xl font-extrabold font-heading theme-text-primary">
+                    Crea tu cuenta de visitante
+                </h2>
+                <p class="text-sm sm:text-base theme-text-secondary mt-3 max-w-xl mx-auto">
+                    Regístrate para reportar objetos extraviados, recibir alertas de coincidencia y agendar tu recojo seguro.
+                </p>
+            </div>
+
+            <!-- Tarjeta de Registro Sync Labs Style -->
+            <div class="theme-card border rounded-3xl p-8 sm:p-12 shadow-2xl">
+                <form id="registerForm" class="space-y-5" autocomplete="off">
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label for="regName" class="block text-xs font-semibold theme-text-secondary mb-1.5">
+                                Nombre completo *
+                            </label>
+                            <input
+                                type="text"
+                                id="regName"
+                                required
+                                placeholder="Ej. Carlos Mendoza"
+                                class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="regEmail" class="block text-xs font-semibold theme-text-secondary mb-1.5">
+                                Correo electrónico *
+                            </label>
+                            <input
+                                type="email"
+                                id="regEmail"
+                                required
+                                placeholder="correo@ejemplo.com"
+                                class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label for="regDni" class="block text-xs font-semibold theme-text-secondary mb-1.5">
+                                DNI / Documento de Identidad *
+                            </label>
+                            <input
+                                type="text"
+                                id="regDni"
+                                required
+                                placeholder="8 dígitos"
+                                class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                            >
+                        </div>
+
+                        <div>
+                            <label for="regPhone" class="block text-xs font-semibold theme-text-secondary mb-1.5">
+                                Teléfono de contacto *
+                            </label>
+                            <input
+                                type="tel"
+                                id="regPhone"
+                                required
+                                placeholder="+51 987 654 321"
+                                class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="regPassword" class="block text-xs font-semibold theme-text-secondary mb-1.5">
+                            Contraseña segura *
+                        </label>
+                        <input
+                            type="password"
+                            id="regPassword"
+                            required
+                            placeholder="Mínimo 8 caracteres"
+                            class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
+                        >
+                    </div>
+
+                    <!-- Mensaje de Aceptación de Notificaciones AWS SES -->
+                    <div class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-start gap-3 text-xs">
+                        <span class="text-lg">📧</span>
+                        <div class="theme-text-secondary">
+                            <span class="font-bold text-sky-600 dark:text-sky-400">Notificaciones automáticas de AWS SES:</span>
+                            <p class="mt-0.5 leading-relaxed">
+                                Al registrarte, recibirás un correo de verificación. Por favor confírmalo para que el sistema pueda avisarte inmediatamente cuando tu pertenencia sea encontrada y validada por seguridad.
+                            </p>
+                        </div>
+                    </div>
+
+                    <p id="registerError" class="hidden text-xs text-red-500 font-medium"></p>
+
+                    <button
+                        type="submit"
+                        id="registerSubmit"
+                        class="btn-pill w-full py-4 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-xl shadow-sky-500/20"
+                    >
+                        Crear Cuenta y Continuar
+                    </button>
+
+                    <div class="text-center pt-2">
+                        <span class="text-xs theme-text-muted">¿Ya tienes una cuenta creada?</span>
+                        <button type="button" class="openLoginBtn text-xs font-bold text-sky-600 hover:underline ml-1">
+                            Inicia sesión aquí
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="border-t border-slate-200 dark:border-slate-800 py-12 px-4 sm:px-6 text-center text-xs theme-text-muted">
+            <p>© 2026 Lost & Found Portal - Impulsado por Amazon Web Services (Cognito, Lambda, S3, DynamoDB, SES).</p>
+        </footer>
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- MODAL DE AUTENTICACIÓN (LOGIN / REGISTRO FLUIDO)          -->
+    <!-- ========================================================= -->
+    <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div class="theme-card border rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            
+            <button id="closeAuthModal" class="absolute top-5 right-5 theme-text-muted hover:theme-text-primary p-2 text-lg">
+                ✕
+            </button>
+
+            <!-- PESTAÑA: LOGIN -->
+            <div id="loginTab">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
+                        <i data-lucide="lock" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold theme-text-primary font-heading">Iniciar Sesión</h3>
+                    <p class="text-xs theme-text-muted mt-1">Acceso para Visitantes y Personal de Seguridad</p>
+                </div>
+
+                <form id="loginForm" class="space-y-4" autocomplete="off">
+                    <div>
+                        <label for="loginEmail" class="block text-xs font-semibold theme-text-secondary mb-1">
+                            Correo electrónico
+                        </label>
+                        <input
+                            type="email"
+                            id="loginEmail"
+                            required
+                            placeholder="correo@ejemplo.com"
+                            class="theme-input w-full px-4 py-3 rounded-2xl text-sm outline-none transition-all"
+                        >
+                    </div>
+
+                    <div>
+                        <label for="loginPassword" class="block text-xs font-semibold theme-text-secondary mb-1">
+                            Contraseña
+                        </label>
+                        <input
+                            type="password"
+                            id="loginPassword"
+                            required
+                            placeholder="Tu contraseña"
+                            class="theme-input w-full px-4 py-3 rounded-2xl text-sm outline-none transition-all"
+                        >
+                    </div>
+
+                    <p id="loginError" class="hidden text-xs text-red-500 font-medium"></p>
+
+                    <button
+                        type="submit"
+                        id="loginSubmit"
+                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md shadow-sky-500/20"
+                    >
+                        Iniciar Sesión
+                    </button>
+
+                    <div class="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span class="text-xs theme-text-muted">¿No tienes cuenta de visitante?</span>
+                        <button type="button" id="toggleToRegister" class="text-xs font-bold text-sky-600 hover:underline ml-1">
+                            Crear una cuenta aquí
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- PESTAÑA: REGISTRO DENTRO DEL MODAL -->
+            <div id="registerTab" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
+                        <i data-lucide="user-plus" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold theme-text-primary font-heading">Crear Cuenta</h3>
+                    <p class="text-xs theme-text-muted mt-1">Registra tus datos para reportar objetos y recibir avisos</p>
+                </div>
+
+                <form id="modalRegisterForm" class="space-y-3.5" autocomplete="off">
+                    <div>
+                        <label for="modalRegName" class="block text-xs font-semibold theme-text-secondary mb-1">
+                            Nombre completo *
+                        </label>
+                        <input
+                            type="text"
+                            id="modalRegName"
+                            required
+                            placeholder="Tu nombre y apellido"
+                            class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="modalRegEmail" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                Correo *
+                            </label>
+                            <input
+                                type="email"
+                                id="modalRegEmail"
+                                required
+                                placeholder="correo@ejemplo.com"
+                                class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                            >
+                        </div>
+                        <div>
+                            <label for="modalRegDni" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                DNI *
+                            </label>
+                            <input
+                                type="text"
+                                id="modalRegDni"
+                                required
+                                placeholder="8 dígitos"
+                                class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label for="modalRegPhone" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                Teléfono *
+                            </label>
+                            <input
+                                type="tel"
+                                id="modalRegPhone"
+                                required
+                                placeholder="987654321"
+                                class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                            >
+                        </div>
+                        <div>
+                            <label for="modalRegPassword" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                Contraseña *
+                            </label>
+                            <input
+                                type="password"
+                                id="modalRegPassword"
+                                required
+                                placeholder="Mín. 8 caracteres"
+                                class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                            >
+                        </div>
+                    </div>
+
+                    <p id="modalRegisterError" class="hidden text-xs text-red-500 font-medium"></p>
+
+                    <button
+                        type="submit"
+                        id="modalRegisterSubmit"
+                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 mt-2"
+                    >
+                        Crear Cuenta y Continuar
+                    </button>
+
+                    <div class="text-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                        <span class="text-xs theme-text-muted">¿Ya tienes cuenta?</span>
+                        <button type="button" id="toggleToLogin" class="text-xs font-bold text-sky-600 hover:underline ml-1">
+                            Iniciar sesión
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- PORTAL DE LA APLICACIÓN (STAFF & CLIENTE AUTENTICADOS)    -->
+    <!-- ========================================================= -->
+    <div id="appView" class="hidden min-h-screen">
+        
+        <!-- App Top Bar -->
+        <header class="sticky top-0 z-30 nav-blur border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+                
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-sky-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-sm theme-text-primary leading-tight">Lost & Found Portal</h2>
+                        <span id="roleBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                            Cargando rol...
+                        </span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span id="currentUserEmail" class="text-xs font-medium theme-text-muted hidden sm:inline"></span>
+                    
+                    <button
+                        id="refreshBtn"
+                        type="button"
+                        class="p-2 rounded-xl border border-slate-200 dark:border-slate-800 theme-card theme-text-secondary hover:theme-text-primary text-xs flex items-center gap-1.5"
+                        title="Recargar datos"
+                    >
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span class="hidden md:inline">Sincronizar</span>
+                    </button>
+
+                    <button
+                        id="logoutBtn"
+                        type="button"
+                        class="px-3.5 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-semibold transition-all"
+                    >
+                        Cerrar Sesión
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Portal Container -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- COLUMNA IZQUIERDA: FORMULARIO DE REPORTE -->
+                <aside class="lg:col-span-5">
+                    <div class="theme-card border rounded-3xl p-6 sm:p-8 shadow-xl sticky top-24">
+                        
+                        <div class="mb-6">
+                            <h3 id="formTitle" class="text-lg font-bold font-heading theme-text-primary">
+                                Registrar Objeto
+                            </h3>
+                            <p id="formHelp" class="text-xs theme-text-muted mt-1 leading-relaxed">
+                                Ingresa la información detallada para el algoritmo de coincidencia.
+                            </p>
+                        </div>
+
+                        <form id="itemForm" class="space-y-4" autocomplete="off">
+                            <input type="hidden" id="itemType" value="LOST">
+
+                            <div>
+                                <label for="title" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Título / Nombre del Objeto *
+                                </label>
+                                <input
+                                    type="text"
+                                    id="title"
+                                    required
+                                    placeholder="Ej. Billetera de cuero marrón Renzo Costa"
+                                    class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                >
+                            </div>
+
+                            <!-- Selector de Categoría + Campo "Otros" Condicional -->
+                            <div>
+                                <label for="category" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Categoría *
+                                </label>
+                                <select
+                                    id="category"
+                                    required
+                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                >
+                                    <option value="Billeteras y Documentos">Billeteras y Documentos</option>
+                                    <option value="Smartphones y Tablets">Smartphones y Tablets</option>
+                                    <option value="Mochilas y Bolsos">Mochilas y Bolsos</option>
+                                    <option value="Joyas y Relojes">Joyas y Relojes</option>
+                                    <option value="Prendas y Accesorios">Prendas y Accesorios</option>
+                                    <option value="Laptops y Tecnología">Laptops y Tecnología</option>
+                                    <option value="Llaves">Llaves</option>
+                                    <option value="Otros">Otros</option>
+                                </select>
+
+                                <!-- Input condicional que aparece al elegir Otros -->
+                                <div id="categoryOtherContainer" class="hidden mt-2">
+                                    <input
+                                        type="text"
+                                        id="categoryOtherInput"
+                                        placeholder="Especifica la categoría personalizada..."
+                                        class="theme-input w-full px-3.5 py-2 rounded-2xl text-xs outline-none border border-sky-400"
+                                    >
+                                </div>
+                            </div>
+
+                            <!-- Selector de Zona del Mall + Campo "Otros" Condicional -->
+                            <div>
+                                <label for="zone" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Zona del Mall *
+                                </label>
+                                <select
+                                    id="zone"
+                                    required
+                                    class="theme-input w-full px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                >
+                                    <option value="Patio de Comidas (Piso 3)">Patio de Comidas (Piso 3)</option>
+                                    <option value="Zona de Cines (Piso 3)">Zona de Cines (Piso 3)</option>
+                                    <option value="Tiendas Pasillo Central (Piso 1)">Tiendas Pasillo Central (Piso 1)</option>
+                                    <option value="Tiendas Departamentales (Piso 2)">Tiendas Departamentales (Piso 2)</option>
+                                    <option value="Estacionamiento Subsuelo (S1/S2)">Estacionamiento Subsuelo (S1/S2)</option>
+                                    <option value="Baños Principales">Baños Principales</option>
+                                    <option value="Entrada Principal">Entrada Principal</option>
+                                    <option value="Otra Zona...">Otra Zona...</option>
+                                </select>
+
+                                <!-- Input condicional que aparece al elegir Otra Zona -->
+                                <div id="zoneOtherContainer" class="hidden mt-2">
+                                    <input
+                                        type="text"
+                                        id="zoneOtherInput"
+                                        placeholder="Escribe la ubicación o tienda específica..."
+                                        class="theme-input w-full px-3.5 py-2 rounded-2xl text-xs outline-none border border-sky-400"
+                                    >
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="itemDate" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Fecha del Evento *
+                                </label>
+                                <input
+                                    type="date"
+                                    id="itemDate"
+                                    required
+                                    class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="description" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Descripción detallada *
+                                </label>
+                                <textarea
+                                    id="description"
+                                    rows="3"
+                                    required
+                                    placeholder="Detalla colores, marcas, signos de desgaste o señas particulares..."
+                                    class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all scrollbar-thin"
+                                ></textarea>
+                            </div>
+
+                            <!-- Foto Opcional (S3 Upload) -->
+                            <div>
+                                <label class="block text-xs font-semibold theme-text-secondary mb-1">
+                                    Fotografía del Objeto (Opcional)
+                                </label>
+                                <div class="relative border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center hover:border-sky-500 transition-colors">
+                                    <input type="file" id="photo" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                    <div id="photoPlaceholder">
+                                        <i data-lucide="camera" class="w-6 h-6 mx-auto text-sky-500 mb-1"></i>
+                                        <p class="text-xs theme-text-secondary font-medium">Haz clic para subir foto</p>
+                                        <p class="text-[10px] theme-text-muted mt-0.5">JPG, PNG (Subida directa a Amazon S3)</p>
+                                    </div>
+                                    <img id="photoPreview" class="hidden w-full h-32 object-cover rounded-xl mx-auto shadow-sm" alt="Vista previa">
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                id="submitBtn"
+                                class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20"
+                            >
+                                <span id="submitBtnText">Guardar Reporte</span>
+                            </button>
+                        </form>
+                    </div>
+                </aside>
+
+                <!-- COLUMNA DERECHA: REPORTES & COINCIDENCIAS (MATCHES) -->
+                <section class="lg:col-span-7">
+                    
+                    <!-- Pestañas para Staff -->
+                    <div id="staffTabs" class="hidden mb-6 flex items-center gap-2 p-1.5 rounded-full theme-card border max-w-sm">
+                        <button
+                            id="tabItems"
+                            type="button"
+                            class="px-4 py-2 rounded-full text-xs font-semibold bg-sky-600 text-white shadow-sm transition-all"
+                        >
+                            Reportes Generales
+                        </button>
+                        <button
+                            id="tabMatches"
+                            type="button"
+                            class="px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5"
+                        >
+                            <span>Coincidencias</span>
+                            <span id="matchCountBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white">0</span>
+                        </button>
+                    </div>
+
+                    <!-- Header de Sección + Filtros de Estado -->
+                    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 id="itemsTitle" class="text-xl font-bold font-heading theme-text-primary">
+                                Reportes Activos
+                            </h3>
+                            <p id="itemsSubtitle" class="text-xs theme-text-muted mt-0.5">
+                                Sincronizado en tiempo real con Amazon DynamoDB.
+                            </p>
+                        </div>
+
+                        <!-- Filtros Rápidos (Todos, Pendientes, Validados, Entregados) -->
+                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                            <button
+                                type="button"
+                                class="filter-btn active px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                data-filter="ALL"
+                            >
+                                Todos
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                data-filter="PENDING"
+                            >
+                                ⏳ Pendientes
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                data-filter="VALIDATED"
+                            >
+                                ✓ Validados
+                            </button>
+                            <button
+                                type="button"
+                                class="filter-btn px-3 py-1.5 rounded-full text-xs font-semibold border border-slate-200 dark:border-slate-800 theme-card"
+                                data-filter="DELIVERED"
+                            >
+                                📦 Entregados
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Vista de Items (2 Columnas en Paralelo) -->
+                    <div id="itemsView" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div id="itemsGrid" class="col-span-full py-12 text-center text-xs theme-text-muted">
+                            Cargando reportes...
+                        </div>
+                    </div>
+
+                    <!-- Vista de Matches (Exclusiva Staff) -->
+                    <div id="matchesView" class="hidden space-y-6">
+                        <div id="matchesGrid" class="py-12 text-center text-xs theme-text-muted">
+                            Cargando coincidencias...
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Main Logic Script (Separated) -->
+    <script src="app.js"></script>
+</body>
+</html>

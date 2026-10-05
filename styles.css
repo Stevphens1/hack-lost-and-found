@@ -1,0 +1,230 @@
+/* ==========================================================================
+   Lost & Found Mall Portal - Stylesheet
+   Design Inspiration: Sync Labs (Light Sky Gradient) & Dimension (Dark Mode)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --font-heading: 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    /* Light Theme Palette (Sync Labs Style) */
+    --bg-gradient-light: linear-gradient(180deg, #cbebfd 0%, #e3f3fd 28%, #f8fcff 60%, #ffffff 100%);
+    --card-bg-light: #ffffff;
+    --card-border-light: rgba(203, 213, 225, 0.7);
+    --input-bg-light: #f8fafc;
+    --text-primary-light: #0f172a;
+    --text-secondary-light: #334155;
+    --text-muted-light: #64748b;
+    --accent-blue: #0284c7;
+    --accent-blue-hover: #0369a1;
+
+    /* Dark Theme Palette (Dimension Style) */
+    --bg-gradient-dark: linear-gradient(180deg, #0b1120 0%, #070b14 40%, #030712 100%);
+    --card-bg-dark: #0f172a;
+    --card-border-dark: rgba(30, 41, 59, 0.8);
+    --input-bg-dark: #1e293b;
+    --text-primary-dark: #f8fafc;
+    --text-secondary-dark: #94a3b8;
+    --text-muted-dark: #64748b;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-body);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+h1, h2, h3, h4, .font-heading {
+    font-family: var(--font-heading);
+}
+
+/* Scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #334155;
+}
+
+/* ==========================================================================
+   Theme Variables Application
+   ========================================================================== */
+
+/* Light Mode Styles */
+body.light-theme {
+    background: var(--bg-gradient-light);
+    background-attachment: fixed;
+    color: var(--text-primary-light);
+}
+
+body.light-theme .hero-section {
+    background: transparent;
+}
+
+body.light-theme .nav-blur {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(226, 232, 240, 0.8);
+    backdrop-filter: blur(12px);
+}
+
+body.light-theme .theme-card {
+    background: var(--card-bg-light);
+    border-color: var(--card-border-light);
+    box-shadow: 0 10px 30px -5px rgba(14, 165, 233, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.03);
+}
+
+body.light-theme .hero-step-card {
+    background: #ffffff;
+    border: 1px solid rgba(186, 230, 253, 0.8);
+    box-shadow: 0 4px 15px -2px rgba(14, 165, 233, 0.06);
+}
+
+body.light-theme .theme-input {
+    background: var(--input-bg-light);
+    border-color: #cbd5e1;
+    color: var(--text-primary-light);
+}
+
+body.light-theme .theme-input:focus {
+    background: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+body.light-theme .theme-text-primary {
+    color: var(--text-primary-light);
+}
+
+body.light-theme .theme-text-secondary {
+    color: var(--text-secondary-light);
+}
+
+body.light-theme .theme-text-muted {
+    color: var(--text-muted-light);
+}
+
+/* Dark Mode Styles */
+body.dark-theme {
+    background: var(--bg-gradient-dark);
+    background-attachment: fixed;
+    color: var(--text-primary-dark);
+}
+
+body.dark-theme .nav-blur {
+    background: rgba(11, 17, 32, 0.85);
+    border-color: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+}
+
+body.dark-theme .theme-card {
+    background: var(--card-bg-dark);
+    border-color: var(--card-border-dark);
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5), 0 0 15px 1px rgba(56, 189, 248, 0.05);
+}
+
+body.dark-theme .hero-step-card {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+body.dark-theme .theme-input {
+    background: var(--input-bg-dark);
+    border-color: #334155;
+    color: var(--text-primary-dark);
+}
+
+body.dark-theme .theme-input:focus {
+    background: #0f172a;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
+}
+
+body.dark-theme .theme-text-primary {
+    color: var(--text-primary-dark);
+}
+
+body.dark-theme .theme-text-secondary {
+    color: var(--text-secondary-dark);
+}
+
+body.dark-theme .theme-text-muted {
+    color: var(--text-muted-dark);
+}
+
+/* ==========================================================================
+   Interactive Components & Animations
+   ========================================================================== */
+
+.area-card {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+.area-card:hover {
+    transform: translateY(-6px);
+}
+
+.btn-pill {
+    border-radius: 9999px;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-pill:hover {
+    transform: scale(1.02);
+}
+
+.btn-pill:active {
+    transform: scale(0.98);
+}
+
+/* Soft Glow Badge */
+.badge-glow-blue {
+    background: rgba(2, 132, 199, 0.12);
+    color: #0284c7;
+    border: 1px solid rgba(2, 132, 199, 0.25);
+}
+
+body.dark-theme .badge-glow-blue {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Filter Pill Buttons */
+.filter-btn {
+    transition: all 0.2s ease;
+}
+
+.filter-btn.active {
+    background-color: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+}
+
+/* QR Code Container */
+.qr-container {
+    background: white;
+    padding: 16px;
+    border-radius: 20px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
