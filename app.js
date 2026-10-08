@@ -816,18 +816,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeAuthModal = document.getElementById('closeAuthModal');
     const toggleToRegister = document.getElementById('toggleToRegister');
     const toggleToLogin = document.getElementById('toggleToLogin');
+    const toggleVerifyToLogin = document.getElementById('toggleVerifyToLogin');
     const loginTab = document.getElementById('loginTab');
     const registerTab = document.getElementById('registerTab');
+    const verifyTab = document.getElementById('verifyTab');
+    const verifyEmailInput = document.getElementById('verifyEmail');
+    const verifyEmailDisplay = document.getElementById('verifyEmailDisplay');
+    const verifyCodeInput = document.getElementById('verifyCode');
+    const verifyError = document.getElementById('verifyError');
+    const verifySubmit = document.getElementById('verifySubmit');
+    const resendCodeBtn = document.getElementById('resendCodeBtn');
 
-    function openModal(mode = 'login') {
+    function openModal(mode = 'login', emailForVerification = '') {
         if (!authModal) return;
         authModal.classList.remove('hidden');
+        loginTab?.classList.add('hidden');
+        registerTab?.classList.add('hidden');
+        verifyTab?.classList.add('hidden');
+
         if (mode === 'register') {
             registerTab?.classList.remove('hidden');
-            loginTab?.classList.add('hidden');
+        } else if (mode === 'verify') {
+            verifyTab?.classList.remove('hidden');
+            if (emailForVerification) {
+                if (verifyEmailInput) verifyEmailInput.value = emailForVerification;
+                if (verifyEmailDisplay) verifyEmailDisplay.textContent = emailForVerification;
+            }
+            if (verifyCodeInput) {
+                verifyCodeInput.value = '';
+                verifyCodeInput.focus();
+            }
+            if (verifyError) verifyError.classList.add('hidden');
         } else {
             loginTab?.classList.remove('hidden');
-            registerTab?.classList.add('hidden');
         }
     }
 
@@ -851,6 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeAuthModal) closeAuthModal.addEventListener('click', () => authModal?.classList.add('hidden'));
     if (toggleToRegister) toggleToRegister.addEventListener('click', () => openModal('register'));
     if (toggleToLogin) toggleToLogin.addEventListener('click', () => openModal('login'));
+    if (toggleVerifyToLogin) toggleVerifyToLogin.addEventListener('click', () => openModal('login'));
 
     // 2. Formulario de Inicio de Sesión
     const loginForm = document.getElementById('loginForm');
@@ -923,13 +945,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 onFailure: function(err) {
                     console.error(err);
-                    if (loginError) {
-                        loginError.textContent = err.message || 'Credenciales no válidas.';
-                        loginError.classList.remove('hidden');
-                    }
                     if (loginSubmit) {
                         loginSubmit.disabled = false;
                         loginSubmit.textContent = 'Iniciar Sesión';
+                    }
+
+                    // Si el usuario no ha verificado su correo con el código de 6 dígitos
+                    if (err.name === 'UserNotConfirmedException' || err.code === 'UserNotConfirmedException') {
+                        openModal('verify', email);
+                        if (verifyError) {
+                            verifyError.textContent = 'Tu cuenta aún no ha sido activada. Ingresa el código de 6 dígitos que AWS envió a tu correo.';
+                            verifyError.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    if (loginError) {
+                        loginError.textContent = err.message || 'Credenciales no válidas.';
+                        loginError.classList.remove('hidden');
                     }
                 }
             });
@@ -976,17 +1009,115 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     return;
                 }
-                alert(
-                    '✓ Cuenta creada con éxito.\n\n' +
-                    '📧 IMPORTANTE: Revisa tu correo electrónico para verificar tu cuenta y aceptar las notificaciones de AWS SES para recibir alertas cuando tu objeto sea encontrado.'
-                );
-                openModal('login');
+
+                // Limpiar formulario y pasar a la pantalla de verificación
+                form.reset();
+                openModal('verify', email);
             });
         });
     }
 
     handleRegisterSubmit('registerForm', 'registerError', 'registerSubmit');
     handleRegisterSubmit('modalRegisterForm', 'modalRegisterError', 'modalRegisterSubmit');
+
+    // 3.1. Formulario de Verificación de Código (Amazon Cognito)
+    const verifyForm = document.getElementById('verifyForm');
+    if (verifyForm) {
+        verifyForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (verifyError) verifyError.classList.add('hidden');
+
+            const email = (verifyEmailInput?.value || '').trim();
+            const code = (verifyCodeInput?.value || '').trim();
+
+            if (!email) {
+                if (verifyError) {
+                    verifyError.textContent = 'No se encontró el correo a verificar. Vuelve al inicio de sesión.';
+                    verifyError.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!code || code.length !== 6) {
+                if (verifyError) {
+                    verifyError.textContent = 'Por favor ingresa los 6 dígitos del código.';
+                    verifyError.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (verifySubmit) {
+                verifySubmit.disabled = true;
+                verifySubmit.textContent = 'Verificando código...';
+            }
+
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+                Username: email,
+                Pool: userPool
+            });
+
+            cognitoUser.confirmRegistration(code, true, function(err, result) {
+                if (verifySubmit) {
+                    verifySubmit.disabled = false;
+                    verifySubmit.textContent = 'Confirmar y Activar Cuenta';
+                }
+
+                if (err) {
+                    console.error('Error confirmRegistration:', err);
+                    if (verifyError) {
+                        if (err.code === 'CodeMismatchException') {
+                            verifyError.textContent = 'Código incorrecto. Revisa el correo y vuelve a intentar.';
+                        } else if (err.code === 'ExpiredCodeException') {
+                            verifyError.textContent = 'El código ha expirado. Haz clic en "Reenviar código".';
+                        } else {
+                            verifyError.textContent = err.message || 'Error al verificar el código.';
+                        }
+                        verifyError.classList.remove('hidden');
+                    }
+                    return;
+                }
+
+                alert('✓ ¡Cuenta activada con éxito en AWS Cognito!\n\nYa puedes iniciar sesión con tu correo y contraseña.');
+                const loginEmailInput = document.getElementById('loginEmail');
+                if (loginEmailInput) loginEmailInput.value = email;
+                openModal('login');
+            });
+        });
+    }
+
+    // 3.2. Reenvío de código de confirmación
+    if (resendCodeBtn) {
+        resendCodeBtn.addEventListener('click', function() {
+            const email = (verifyEmailInput?.value || '').trim();
+            if (!email) {
+                alert('No se pudo identificar el correo para el reenvío.');
+                return;
+            }
+
+            const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+                Username: email,
+                Pool: userPool
+            });
+
+            resendCodeBtn.disabled = true;
+            resendCodeBtn.textContent = 'Enviando...';
+
+            cognitoUser.resendConfirmationCode(function(err, result) {
+                resendCodeBtn.disabled = false;
+                resendCodeBtn.textContent = 'Reenviar código';
+
+                if (err) {
+                    console.error('Error resendConfirmationCode:', err);
+                    if (verifyError) {
+                        verifyError.textContent = err.message || 'No se pudo reenviar el código.';
+                        verifyError.classList.remove('hidden');
+                    }
+                } else {
+                    alert(`✓ Se ha enviado un nuevo código de 6 dígitos a ${email}`);
+                }
+            });
+        });
+    }
 
     // 4. Logout
     const logoutBtn = document.getElementById('logoutBtn');

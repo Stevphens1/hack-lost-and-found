@@ -525,6 +525,55 @@
                     </div>
                 </form>
             </div>
+
+            <!-- PESTAÑA: VERIFICACIÓN DE CÓDIGO (COGNITO) -->
+            <div id="verifyTab" class="hidden">
+                <div class="text-center mb-6">
+                    <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
+                        <i data-lucide="mail-check" class="w-6 h-6"></i>
+                    </div>
+                    <h3 class="text-xl font-bold theme-text-primary font-heading">Verifica tu Correo</h3>
+                    <p class="text-xs theme-text-muted mt-1">Ingresa el código de 6 dígitos que AWS envió a:</p>
+                    <p id="verifyEmailDisplay" class="text-xs font-bold text-sky-600 dark:text-sky-400 mt-0.5 break-all"></p>
+                </div>
+
+                <form id="verifyForm" class="space-y-4" autocomplete="off">
+                    <input type="hidden" id="verifyEmail">
+
+                    <div>
+                        <label for="verifyCode" class="block text-xs font-semibold theme-text-secondary mb-1 text-center">
+                            Código de verificación (6 dígitos)
+                        </label>
+                        <input
+                            type="text"
+                            id="verifyCode"
+                            required
+                            maxlength="6"
+                            placeholder="123456"
+                            class="theme-input w-full px-4 py-3 rounded-2xl text-center text-lg font-bold tracking-[6px] outline-none transition-all"
+                        >
+                    </div>
+
+                    <p id="verifyError" class="hidden text-xs text-red-500 font-medium text-center"></p>
+
+                    <button
+                        type="submit"
+                        id="verifySubmit"
+                        class="btn-pill w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md shadow-sky-500/20 cursor-pointer"
+                    >
+                        Confirmar y Activar Cuenta
+                    </button>
+
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <button type="button" id="resendCodeBtn" class="font-semibold text-sky-600 hover:underline cursor-pointer">
+                            Reenviar código
+                        </button>
+                        <button type="button" id="toggleVerifyToLogin" class="theme-text-muted hover:theme-text-primary cursor-pointer">
+                            Volver al Login
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
