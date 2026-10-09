@@ -15,7 +15,7 @@ La plataforma conecta en tiempo real a dos actores clave:
 1. **Personal de Seguridad / Staff del Mall:** Registra hallazgos físicos de objetos en las distintas áreas del centro comercial con fotos y ubicaciones exactas.
 2. **Visitantes / Clientes:** Reportan pérdidas con descripciones y datos de contacto.
 
-Un **motor inteligente en AWS Lambda** analiza las descripciones y atributos, calcula el porcentaje de coincidencia (*match score*) y, una vez que el personal de seguridad valida el reclamo, genera un **Pase de Recojo Seguro con Código QR** y notifica automáticamente al usuario vía **Amazon SES**.
+Un **motor inteligente de Inteligencia Artificial en AWS Lambda y Amazon Bedrock (Nova Lite `amazon.nova-lite-v1:0`)** analiza tanto las fotografías reales como las descripciones textuales y atributos, calcula el porcentaje de coincidencia (*match score* con clasificación visual `ALTA`, `MEDIA`, `BAJA`) y, una vez que el personal de seguridad valida el reclamo, genera un **Pase de Recojo Seguro con Código QR** y notifica automáticamente al usuario vía **Amazon SNS**.
 
 ---
 
@@ -34,8 +34,10 @@ flowchart TD
     L_Url["⚡ Lambda: GeneratePresignedUrl"]
     L_Items["⚡ Lambda: ManageItems"]
     L_Match["⚡ Lambda: Matchmaking Engine"]
+    L_Vision["⚡ Lambda: Visual AI Matcher"]
     L_Valid["⚡ Lambda: Validate & Resolve"]
     
+    Bedrock["🧠 Amazon Bedrock (Nova Lite)"]
     S3_Media["🪣 Amazon S3 (Fotos Objetos)"]
     DDB["🗄️ Amazon DynamoDB (NoSQL)"]
     SNS["📢 Amazon SNS (Notification Service)"]
@@ -48,6 +50,9 @@ flowchart TD
     APIGW --> L_Url --> S3_Media
     APIGW --> L_Items --> DDB
     L_Items --> L_Match --> DDB
+    L_Match --> L_Vision --> Bedrock
+    L_Vision --> S3_Media
+    L_Vision --> DDB
     APIGW --> L_Valid --> DDB
     L_Valid --> SNS
 ```

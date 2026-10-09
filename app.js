@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * Lost & Found Portal - Main Application Logic
- * AWS Services: Amazon Cognito, Amazon API Gateway, Amazon S3, Amazon DynamoDB, Amazon SNS
+ * AWS Services: Amazon Cognito, Amazon API Gateway, Amazon S3, Amazon DynamoDB, Amazon SNS, Amazon Bedrock (Nova Lite)
  * ============================================================================
  */
 
@@ -240,7 +240,122 @@ function validatedMatchForItem(itemID) {
 }
 
 // ============================================================================
-// 8. RENDERIZADO DE INTERFAZ DEL CLIENTE (DISEÑO EXACTO A CAPTURA 1)
+// 8. RENDERIZADO DE EVIDENCIA FOTOGRÁFICA Y ANÁLISIS AMAZON BEDROCK (NOVA LITE)
+// ============================================================================
+function safePhotoUrl(url) {
+    if (typeof url !== 'string') return '';
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'https:' ? parsed.href : '';
+    } catch { return ''; }
+}
+
+function photoTile(item, label, compact = false) {
+    const photo = safePhotoUrl(item?.imageUrl);
+    const title = escapeHtml(item?.title || label);
+    if (!photo) {
+        return `
+            <div class="lf-photo-tile lf-photo-empty ${compact ? 'lf-photo-small' : ''}">
+                <span class="lf-empty-icon">📷</span>
+                <span class="font-semibold text-xs">${escapeHtml(label)}</span>
+                <small class="text-[10px] theme-text-muted">Sin foto adjunta</small>
+            </div>
+        `;
+    }
+    return `
+        <button 
+            type="button" 
+            class="lf-photo-tile lf-photo-trigger ${compact ? 'lf-photo-small' : ''}" 
+            data-photo-url="${escapeHtml(photo)}" 
+            data-photo-title="${title}" 
+            aria-label="Ampliar fotografía de ${title}" 
+            title="Ver fotografía en alta resolución"
+        >
+            <img src="${escapeHtml(photo)}" alt="Fotografía real de ${title}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('lf-photo-failed'); this.style.display='none'">
+            <span class="lf-photo-label">${escapeHtml(label)} · Ampliar ↗</span>
+            <span class="lf-photo-error">No se pudo cargar la imagen.</span>
+        </button>
+    `;
+}
+
+function novaAnalysisHtml(match) {
+    const state = String(match.visualStatus || '').toUpperCase();
+    if (!state) {
+        return `
+            <div class="lf-ai-info">
+                Análisis visual de Amazon Bedrock pendiente o no disponible.
+            </div>
+        `;
+    }
+    if (state === 'PENDING') {
+        return `
+            <div class="lf-ai-card lf-ai-pending">
+                <div class="lf-ai-heading">
+                    <span class="lf-ai-spinner"></span> Amazon Nova Lite · Analizando fotografías
+                </div>
+                <p class="text-xs theme-text-muted mt-1">Comparando características visuales en AWS Bedrock...</p>
+            </div>
+        `;
+    }
+    if (state === 'NOT_AVAILABLE') {
+        return `
+            <div class="lf-ai-info">
+                Comparación visual de Bedrock no disponible: se requiere foto en ambos reportes.
+            </div>
+        `;
+    }
+    if (state === 'ERROR') {
+        return `
+            <div class="lf-ai-card lf-ai-error">
+                <div class="lf-ai-heading">⚠️ Amazon Nova Lite · No disponible</div>
+                <p class="text-xs theme-text-muted mt-1">El score heurístico y los botones de validación siguen operativos.</p>
+            </div>
+        `;
+    }
+    if (state === 'COMPLETED') {
+        const similarity = String(match.visualSimilarity || 'NO_DETERMINADA').toUpperCase();
+        const className = ['ALTA', 'MEDIA', 'BAJA'].includes(similarity) ? similarity.toLowerCase() : 'unknown';
+        return `
+            <div class="lf-ai-card">
+                <div class="lf-ai-heading">
+                    <span>✨ Análisis Visual · Amazon Nova Lite</span>
+                    <span class="lf-ai-badge lf-ai-${className}">${escapeHtml(similarity.replace('_',' '))}</span>
+                </div>
+                <div class="lf-ai-body">${escapeHtml(match.visualAnalysis || 'Sin detalles disponibles.')}</div>
+                <div class="lf-ai-disclaimer">Evaluación asistida por IA generativa (Bedrock Nova Lite). La validación final corresponde a Seguridad.</div>
+            </div>
+        `;
+    }
+    return '';
+}
+
+function closePhotoViewer() {
+    const modal = document.getElementById('lfPhotoViewer');
+    if (modal) {
+        modal.hidden = true;
+        document.body.classList.remove('lf-modal-open');
+    }
+}
+
+function openPhotoViewer(url, title) {
+    const safe = safePhotoUrl(url);
+    if (!safe) return;
+    const modal = document.getElementById('lfPhotoViewer');
+    if (!modal) return;
+    const image = modal.querySelector('#lfPhotoViewerImage');
+    if (image) {
+        image.src = safe;
+        image.alt = title || 'Fotografía del objeto';
+    }
+    const titleEl = modal.querySelector('#lfPhotoViewerTitle');
+    if (titleEl) titleEl.textContent = title || 'Fotografía del objeto';
+    modal.hidden = false;
+    document.body.classList.add('lf-modal-open');
+    modal.querySelector('.lf-photo-close')?.focus();
+}
+
+// ============================================================================
+// 9. RENDERIZADO DE INTERFAZ DEL CLIENTE
 // ============================================================================
 function buildCustomerMatchHtml(item) {
     const validated = validatedMatchForItem(item.itemID);
@@ -255,7 +370,7 @@ function buildCustomerMatchHtml(item) {
                     <button 
                         type="button"
                         onclick="showPickupModal('${escapeHtml(item.itemID)}', '${escapeHtml(item.title)}')"
-                        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full shadow-md shadow-blue-500/20 transition-all shrink-0"
+                        class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full shadow-md shadow-blue-500/20 transition-all shrink-0 cursor-pointer"
                     >
                         Ver Cita & QR
                     </button>
@@ -274,6 +389,18 @@ function buildCustomerMatchHtml(item) {
             <div class="mt-3.5 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
                 <p class="text-xs theme-text-muted text-center">
                     Sin coincidencias detectadas por el momento.
+                </p>
+            </div>
+        `;
+    }
+
+    // Verificación si IA está analizando
+    const isPending = matches.some(m => String(m.visualStatus || '').toUpperCase() === 'PENDING');
+    if (isPending) {
+        return `
+            <div class="mt-3.5 p-3.5 rounded-2xl border border-sky-500/30 bg-sky-500/5">
+                <p class="text-xs font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-2">
+                    <span class="lf-ai-spinner"></span> Analizando similitud con Amazon Nova Lite...
                 </p>
             </div>
         `;
@@ -335,23 +462,8 @@ function buildItemCard(item) {
         }
     }
 
-    // Banner de la tarjeta
-    const bannerUrl = item.imageUrl || getCategoryPlaceholderImage(item.category);
-    const headerHtml = `
-        <div class="relative w-full h-36 overflow-hidden rounded-t-3xl bg-slate-100 dark:bg-slate-800/80">
-            <img src="${escapeHtml(bannerUrl)}" alt="${escapeHtml(item.title)}" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
-            
-            <!-- Badge Perdido / Encontrado -->
-            <span class="absolute top-3 right-3 text-[11px] font-bold px-3 py-1 rounded-full shadow-md ${
-                isFound
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-amber-500 text-white'
-            }">
-                ${isFound ? 'Encontrado' : 'Perdido'}
-            </span>
-        </div>
-    `;
+    // Cabecera con Fotografía Real de S3 o Tile descriptivo
+    const headerHtml = `<div class="lf-item-photo-wrap">${photoTile(item, isFound ? 'Objeto Encontrado' : 'Objeto Perdido')}</div>`;
 
     return `
         <article class="theme-card border rounded-3xl overflow-hidden shadow-md flex flex-col justify-between hover:shadow-xl transition-all">
@@ -436,7 +548,7 @@ function renderItems() {
 }
 
 // ============================================================================
-// 9. RENDERIZADO DE COINCIDENCIAS (STAFF / SEGURIDAD)
+// 10. RENDERIZADO DE COINCIDENCIAS (STAFF / SEGURIDAD)
 // ============================================================================
 function buildMatchCandidate(match) {
     const lost = match.lostItem || {};
@@ -449,7 +561,7 @@ function buildMatchCandidate(match) {
     if (isValidated) {
         actionHtml = `
             <div class="mt-4 px-3.5 py-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400 text-xs font-semibold">
-                ✓ Coincidencia validada & Correo enviado
+                ✓ Coincidencia validada & Notificación enviada
             </div>
         `;
     } else if (isRejected) {
@@ -518,6 +630,15 @@ function buildMatchCandidate(match) {
                        </div>`
                     : ''
             }
+
+            <!-- Comparación Visual de Ambas Fotos -->
+            <div class="lf-compare-grid">
+                ${photoTile(lost, 'Objeto perdido', true)}
+                ${photoTile(match.foundItem || {}, 'Objeto encontrado', true)}
+            </div>
+
+            <!-- Análisis con Amazon Bedrock Nova Lite -->
+            ${novaAnalysisHtml(match)}
 
             ${actionHtml}
         </div>
@@ -590,6 +711,7 @@ function renderStaffMatches() {
                                 ${candidates.length} candidato(s)
                             </span>
                         </div>
+                        <div class="lf-found-photo">${photoTile(found, 'Fotografía del hallazgo')}</div>
                         <div class="flex flex-wrap gap-4 mt-3 text-xs theme-text-muted">
                             <span>📍 ${escapeHtml(found.zone || 'Sin zona')}</span>
                             <span>📅 ${escapeHtml(formatDate(found.date))}</span>
@@ -613,7 +735,7 @@ function renderStaffMatches() {
 }
 
 // ============================================================================
-// 10. CARGA DE DATOS DESDE DYNAMODB / API GATEWAY
+// 11. CARGA DE DATOS DESDE DYNAMODB / API GATEWAY
 // ============================================================================
 async function loadData() {
     const itemsGrid = document.getElementById('itemsGrid');
@@ -649,7 +771,7 @@ async function loadData() {
 }
 
 // ============================================================================
-// 11. MODAL DE CITA & CÓDIGO QR 100% VISIBLE (CLIENTE & STAFF)
+// 12. MODAL DE CITA & CÓDIGO QR 100% VISIBLE (CLIENTE & STAFF)
 // ============================================================================
 function showPickupModal(itemId, itemTitle) {
     let modal = document.getElementById('pickupModal');
@@ -665,7 +787,7 @@ function showPickupModal(itemId, itemTitle) {
 
     modal.innerHTML = `
         <div class="theme-card border rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <button onclick="closePickupModal()" class="absolute top-4 right-4 theme-text-muted hover:theme-text-primary p-2 text-lg">
+            <button onclick="closePickupModal()" class="absolute top-4 right-4 theme-text-muted hover:theme-text-primary p-2 text-lg cursor-pointer">
                 ✕
             </button>
             <div class="text-center">
@@ -684,7 +806,7 @@ function showPickupModal(itemId, itemTitle) {
                 <p class="text-[11px] theme-text-muted mt-2.5 font-mono font-medium">Token de Verificación Anti-Fraude</p>
             </div>
 
-            <!-- Recuadro de Instrucciones con Alto Contraste (Sin grises apagados) -->
+            <!-- Recuadro de Instrucciones con Alto Contraste -->
             <div class="bg-sky-50 dark:bg-slate-900 border border-sky-200 dark:border-slate-700 rounded-2xl p-4 text-xs space-y-2.5">
                 <div class="flex items-center justify-between">
                     <span class="text-slate-600 dark:text-slate-400 font-medium">📍 Lugar de entrega:</span>
@@ -700,7 +822,7 @@ function showPickupModal(itemId, itemTitle) {
                 </div>
             </div>
 
-            <button onclick="closePickupModal()" class="btn-pill w-full mt-6 py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm transition-all shadow-md shadow-sky-500/20">
+            <button onclick="closePickupModal()" class="btn-pill w-full mt-6 py-3.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm transition-all shadow-md shadow-sky-500/20 cursor-pointer">
                 Entendido
             </button>
         </div>
@@ -715,7 +837,7 @@ function closePickupModal() {
 }
 
 // ============================================================================
-// 12. GESTIÓN DE SESIÓN & COGNITO AUTH
+// 13. GESTIÓN DE SESIÓN & COGNITO AUTH
 // ============================================================================
 function showApplication(session) {
     window.activeSession = session;
@@ -806,10 +928,40 @@ function showLanding() {
 }
 
 // ============================================================================
-// 13. INICIALIZACIÓN DE FORMULARIOS Y EVENT LISTENERS
+// 14. INICIALIZACIÓN DE FORMULARIOS Y EVENT LISTENERS
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+
+    // Visor de fotos modal (delegación de eventos)
+    document.addEventListener('click', event => {
+        const trigger = event.target.closest('.lf-photo-trigger');
+        if (trigger) openPhotoViewer(trigger.dataset.photoUrl, trigger.dataset.photoTitle);
+        if (event.target.closest('[data-close-photo]')) closePhotoViewer();
+    });
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closePhotoViewer();
+    });
+
+    // Polling en segundo plano para análisis pendientes de Amazon Nova Lite
+    window.setInterval(() => {
+        if (!window.activeSession) return;
+        if (!window.currentMatches.some(m => String(m.visualStatus).toUpperCase() === 'PENDING')) return;
+        
+        if (window.lfRefreshingNova) return;
+        window.lfRefreshingNova = true;
+        
+        apiFetch(MATCHES_URL, {method: 'GET'})
+            .then(result => {
+                window.currentMatches = Array.isArray(result.matches) ? result.matches : [];
+                renderItems();
+                if (window.currentUserIsStaff) {
+                    renderStaffMatches();
+                }
+            })
+            .catch(error => console.warn('Nova refresh:', error))
+            .finally(() => { window.lfRefreshingNova = false; });
+    }, 10000);
 
     // 1. Modales y Botones de Autenticación
     const authModal = document.getElementById('authModal');
@@ -1010,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Limpiar formulario y pasar a la pantalla de verificación
+                // Limpiar formulario y pasar a la pantalla de verificación de 6 dígitos
                 form.reset();
                 openModal('verify', email);
             });
@@ -1189,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const confirmed = window.confirm(
                     '¿Confirmas la validez de este reclamo?\n\n' +
                     '• El reporte del cliente se marcará como VALIDADO.\n' +
-                    '• Se enviará un correo automático vía Amazon SES con las instrucciones de entrega.'
+                    '• Se enviará un aviso de notificación por Amazon SNS.'
                 );
                 if (!confirmed) return;
 
@@ -1253,6 +1405,13 @@ document.addEventListener('DOMContentLoaded', () => {
         photoInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
+                if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+                    alert('Selecciona una imagen JPG o PNG de hasta 4 MB.');
+                    photoInput.value = '';
+                    photoPreview.classList.add('hidden');
+                    photoPlaceholder.classList.remove('hidden');
+                    return;
+                }
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     photoPreview.src = evt.target.result;
@@ -1279,9 +1438,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 let imageUrl = null;
-                const file = photoInput.files[0];
+                const file = photoInput?.files?.[0];
+                let photoKey = null;
 
                 if (file) {
+                    if (!['image/jpeg', 'image/png'].includes(file.type)) throw new Error('Selecciona una fotografía JPG o PNG.');
+                    if (file.size > 4 * 1024 * 1024) throw new Error('La imagen debe pesar como máximo 4 MB.');
                     submitBtn.innerHTML = 'Subiendo imagen a S3...';
                     const presignedRes = await apiFetch(`${API_BASE_URL}/upload-url`, {
                         method: 'POST',
@@ -1295,9 +1457,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!s3Res.ok) throw new Error('Error al subir imagen a Amazon S3');
                     imageUrl = presignedRes.imageUrl;
+                    photoKey = presignedRes.photoKey || null;
                 }
 
-                submitBtn.innerHTML = 'Guardando reporte en DynamoDB...';
+                submitBtn.innerHTML = 'Guardando reporte y analizando...';
 
                 // Resolver Categoría y Zona considerando "Otros"
                 let finalCategory = categorySelect.value;
@@ -1317,7 +1480,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     zone: finalZone,
                     date: document.getElementById('itemDate').value,
                     description: document.getElementById('description').value.trim(),
-                    imageUrl: imageUrl
+                    imageUrl: imageUrl,
+                    ...(photoKey ? { photoKey } : {})
                 };
 
                 if (!itemData.title || !itemData.zone || !itemData.date || !itemData.description) {
@@ -1331,7 +1495,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const matchesCreated = Number(result.matchesCreated || 0);
                 if (matchesCreated > 0) {
-                    alert(`✓ Reporte creado exitosamente. Se encontraron ${matchesCreated} coincidencia(s).`);
+                    alert(`✓ Reporte registrado exitosamente. Se generaron ${matchesCreated} coincidencia(s) para análisis.`);
                 } else {
                     alert('✓ Reporte registrado correctamente.');
                 }

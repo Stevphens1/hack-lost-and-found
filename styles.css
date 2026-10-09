@@ -258,3 +258,52 @@ body.dark-theme .badge-glow-blue {
     border: 1px solid rgba(226, 232, 240, 0.8);
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
 }
+
+/* ============================================================
+   Photographic evidence & AI analysis (Amazon Nova Lite)
+   ============================================================ */
+.lf-item-photo-wrap { padding: 12px 12px 0; }
+.lf-photo-tile { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%; min-height:215px; background:linear-gradient(135deg,#e5f3fd,#eff6ff); border:1px solid #bfdbfe; border-radius:18px; overflow:hidden; color:#475569; text-align:center; }
+.lf-photo-trigger { cursor:zoom-in; padding:0; }
+.lf-photo-tile img { display:block; width:100%; height:240px; object-fit:contain; padding:10px; transition: transform .25s ease; }
+.lf-photo-trigger:hover img { transform:scale(1.035); }
+.lf-photo-label { position:absolute; z-index:1; bottom:9px; left:9px; right:9px; border-radius:10px; padding:8px 10px; background:rgba(15,23,42,.78); color:white; font-size:12px; font-weight:650; backdrop-filter:blur(6px); }
+.lf-photo-small { min-height:160px; }
+.lf-photo-small img { height:176px; }
+.lf-photo-empty { padding:22px 10px; font-size:12px; }
+.lf-photo-empty .lf-empty-icon { font-size:30px; }
+.lf-photo-empty small { font-size:11px; opacity:.7; }
+.lf-photo-failed { min-height:130px; }
+.lf-photo-error { display:none; font-size:12px; padding:15px; }
+.lf-photo-failed .lf-photo-error { display:block; }
+.lf-photo-failed .lf-photo-label { display:none; }
+.lf-compare-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-top:18px; }
+.lf-found-photo { max-width:440px; margin:18px 0 5px; }
+.lf-ai-card { margin-top:18px; padding:17px; border:1px solid #c4b5fd; border-radius:18px; background:rgba(139,92,246,.06); }
+.lf-ai-heading { display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap; font-size:13px; font-weight:800; color:#7c3aed; }
+.lf-ai-body { margin-top:12px; line-height:1.7; white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; color:inherit; max-height:350px; overflow:auto; }
+.lf-ai-badge { font-size:11px; padding:5px 11px; border-radius:99px; background:#e2e8f0; color:#334155; }
+.lf-ai-alta { background:#dcfce7; color:#166534; }
+.lf-ai-media { background:#fef3c7; color:#92400e; }
+.lf-ai-baja { background:#fee2e2; color:#991b1b; }
+.lf-ai-disclaimer { margin-top:14px; padding-top:10px; border-top:1px solid #c4b5fd70; font-size:11px; opacity:.8; }
+.lf-ai-info { margin-top:12px; border:1px dashed #94a3b8; padding:12px; border-radius:13px; font-size:12px; opacity:.8; }
+.lf-ai-pending p, .lf-ai-error p { font-size:12px; margin-top:8px; }
+.lf-ai-error { border-color:#fbbf24; background:rgba(251,191,36,.07); }
+.lf-ai-spinner { width:12px; height:12px; border:2px solid #ddd6fe; border-top-color:#7c3aed; border-radius:50%; display:inline-block; animation:lf-spin .8s linear infinite; }
+@keyframes lf-spin { to { transform:rotate(360deg); } }
+.lf-modal-open { overflow:hidden; }
+.lf-photo-modal[hidden] { display:none !important; }
+.lf-photo-modal { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:14px; }
+.lf-photo-backdrop { position:absolute; inset:0; background:rgba(2,6,23,.9); backdrop-filter:blur(10px); }
+.lf-photo-panel { position:relative; z-index:1; width:min(100%,1000px); max-height:96dvh; background:#0f172a; color:#fff; border:1px solid #334155; border-radius:22px; padding:12px; display:flex; flex-direction:column; gap:10px; box-shadow:0 30px 100px #0008; }
+.lf-photo-toolbar { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:5px 10px; font-size:13px; }
+.lf-photo-close { border:1px solid #475569; background:#1e293b; color:#fff; border-radius:10px; padding:8px 12px; cursor:pointer; white-space:nowrap; }
+.lf-photo-panel img { width:100%; max-height:calc(96dvh - 130px); object-fit:contain; border-radius:13px; background:#020617; }
+.lf-photo-panel p { font-size:11px; color:#94a3b8; padding:0 10px 5px; }
+body.dark-theme .lf-photo-tile { background:#111f36; border-color:#334155; color:#cbd5e1; }
+body.dark-theme .lf-ai-card { background:#221633; border-color:#6d28d9; }
+body.dark-theme .lf-ai-heading { color:#c4b5fd; }
+body.dark-theme .lf-ai-info { border-color:#475569; }
+@media(max-width:480px) { .lf-photo-small { min-height:115px; } .lf-photo-small img { height:130px; padding:4px; } .lf-photo-label { font-size:10px; padding:6px; } .lf-photo-tile { min-height:180px; } }
+@media(prefers-reduced-motion:reduce) { .lf-photo-tile img,.lf-ai-spinner { animation:none; transition:none; } }

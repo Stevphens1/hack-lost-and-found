@@ -18,7 +18,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <!-- Custom CSS (Separated) -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20261008-3">
 </head>
 
 <body class="light-theme antialiased min-h-screen">
@@ -103,7 +103,7 @@
             </h1>
 
             <p class="text-base sm:text-lg theme-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed">
-                Conectamos en segundos los reportes del personal de seguridad con las solicitudes de los visitantes mediante un motor de coincidencias inteligente y seguro en AWS.
+                Conectamos en segundos los reportes del personal de seguridad con las solicitudes de los visitantes mediante un motor de coincidencias inteligente con Amazon Bedrock y AWS.
             </p>
 
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -129,15 +129,15 @@
                         <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">1</div>
                         <div>
                             <h4 class="font-bold text-sm theme-text-primary">Reporte Rápido</h4>
-                            <p class="text-xs theme-text-secondary mt-1">Registra la zona, fecha y características del objeto extraviado.</p>
+                            <p class="text-xs theme-text-secondary mt-1">Registra la zona, fecha, foto y características del objeto extraviado.</p>
                         </div>
                     </div>
 
                     <div class="flex items-start gap-3.5 p-4 rounded-2xl hero-step-card transition-all">
                         <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shrink-0 font-bold shadow-md shadow-sky-500/20">2</div>
                         <div>
-                            <h4 class="font-bold text-sm theme-text-primary">Matching Inteligente</h4>
-                            <p class="text-xs theme-text-secondary mt-1">AWS Lambda compara los hallazgos del staff con tu reporte.</p>
+                            <h4 class="font-bold text-sm theme-text-primary">Matching con IA</h4>
+                            <p class="text-xs theme-text-secondary mt-1">Amazon Nova Lite analiza imágenes y descripciones para validar coincidencias.</p>
                         </div>
                     </div>
 
@@ -226,12 +226,12 @@
                     <div class="p-6 theme-card border rounded-3xl shadow-sm">
                         <p class="text-3xl sm:text-5xl font-extrabold text-emerald-600 font-heading">94%</p>
                         <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tasa de Coincidencia</p>
-                        <p class="text-xs theme-text-muted mt-1">Precisión de matching</p>
+                        <p class="text-xs theme-text-muted mt-1">Precisión con Bedrock</p>
                     </div>
                     <div class="p-6 theme-card border rounded-3xl shadow-sm">
                         <p class="text-3xl sm:text-5xl font-extrabold text-indigo-600 font-heading">&lt; 24h</p>
                         <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tiempo de Respuesta</p>
-                        <p class="text-xs theme-text-muted mt-1">Notificación por correo</p>
+                        <p class="text-xs theme-text-muted mt-1">Notificación instantánea</p>
                     </div>
                     <div class="p-6 theme-card border rounded-3xl shadow-sm">
                         <p class="text-3xl sm:text-5xl font-extrabold text-amber-500 font-heading">100%</p>
@@ -332,7 +332,7 @@
                         <div class="theme-text-secondary">
                             <span class="font-bold text-sky-600 dark:text-sky-400">Notificaciones automáticas de Amazon SNS:</span>
                             <p class="mt-0.5 leading-relaxed">
-                                Al registrarte, recibirás un correo para confirmar tu suscripción a las alertas. Confírmalo para que el sistema te avise inmediatamente cuando tu pertenencia sea encontrada y validada por seguridad.
+                                Al registrarte, recibirás un correo con tu código de verificación y un aviso para confirmar tu suscripción a las alertas del mall.
                             </p>
                         </div>
                     </div>
@@ -359,12 +359,12 @@
 
         <!-- FOOTER -->
         <footer class="border-t border-slate-200 dark:border-slate-800 py-12 px-4 sm:px-6 text-center text-xs theme-text-muted">
-            <p>© 2026 Lost & Found Portal - Impulsado por Amazon Web Services (Cognito, Lambda, S3, DynamoDB, SNS).</p>
+            <p>© 2026 Lost & Found Portal · AWS Cognito, API Gateway, Lambda, S3, DynamoDB, SNS y Amazon Bedrock Nova Lite.</p>
         </footer>
     </main>
 
     <!-- ========================================================= -->
-    <!-- MODAL DE AUTENTICACIÓN (LOGIN / REGISTRO FLUIDO)          -->
+    <!-- MODAL DE AUTENTICACIÓN (LOGIN / REGISTRO / VERIFICACIÓN)  -->
     <!-- ========================================================= -->
     <div id="authModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
         <div class="theme-card border rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
@@ -526,7 +526,7 @@
                 </form>
             </div>
 
-            <!-- PESTAÑA: VERIFICACIÓN DE CÓDIGO (COGNITO) -->
+            <!-- PESTAÑA: VERIFICACIÓN DE CÓDIGO (AMAZON COGNITO) -->
             <div id="verifyTab" class="hidden">
                 <div class="text-center mb-6">
                     <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
@@ -635,7 +635,7 @@
                                 Registrar Objeto
                             </h3>
                             <p id="formHelp" class="text-xs theme-text-muted mt-1 leading-relaxed">
-                                Ingresa la información detallada para el algoritmo de coincidencia.
+                                Ingresa la información detallada para el algoritmo de coincidencia e IA.
                             </p>
                         </div>
 
@@ -742,19 +742,19 @@
                                 ></textarea>
                             </div>
 
-                            <!-- Foto Opcional (S3 Upload) -->
+                            <!-- Foto Opcional (S3 Upload para análisis con Amazon Nova Lite) -->
                             <div>
                                 <label class="block text-xs font-semibold theme-text-secondary mb-1">
-                                    Fotografía del Objeto (Opcional)
+                                    Fotografía del Objeto (Opcional - Análisis Bedrock)
                                 </label>
                                 <div class="relative border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center hover:border-sky-500 transition-colors">
-                                    <input type="file" id="photo" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                                    <input type="file" id="photo" accept="image/jpeg,image/png" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                                     <div id="photoPlaceholder">
                                         <i data-lucide="camera" class="w-6 h-6 mx-auto text-sky-500 mb-1"></i>
                                         <p class="text-xs theme-text-secondary font-medium">Haz clic para subir foto</p>
-                                        <p class="text-[10px] theme-text-muted mt-0.5">JPG, PNG (Subida directa a Amazon S3)</p>
+                                        <p class="text-[10px] theme-text-muted mt-0.5">JPG o PNG, máx. 4 MB. Subida directa a S3 y análisis visual.</p>
                                     </div>
-                                    <img id="photoPreview" class="hidden w-full h-32 object-cover rounded-xl mx-auto shadow-sm" alt="Vista previa">
+                                    <img id="photoPreview" class="hidden w-full h-56 object-contain rounded-xl mx-auto shadow-sm" alt="Vista previa">
                                 </div>
                             </div>
 
@@ -798,7 +798,7 @@
                                 Reportes Activos
                             </h3>
                             <p id="itemsSubtitle" class="text-xs theme-text-muted mt-0.5">
-                                Sincronizado en tiempo real con Amazon DynamoDB.
+                                Sincronizado en tiempo real con Amazon DynamoDB y Amazon Bedrock.
                             </p>
                         </div>
 
@@ -853,7 +853,20 @@
         </main>
     </div>
 
+    <!-- Visor de Fotografías a Pantalla Completa -->
+    <div id="lfPhotoViewer" class="lf-photo-modal" role="dialog" aria-modal="true" aria-label="Visor de fotografías" hidden>
+        <div class="lf-photo-backdrop" data-close-photo></div>
+        <div class="lf-photo-panel">
+            <div class="lf-photo-toolbar">
+                <strong id="lfPhotoViewerTitle">Fotografía</strong>
+                <button type="button" class="lf-photo-close" data-close-photo aria-label="Cerrar fotografía">✕ Cerrar</button>
+            </div>
+            <img id="lfPhotoViewerImage" alt="Fotografía del objeto">
+            <p>Fotografía del reporte original en Amazon S3.</p>
+        </div>
+    </div>
+
     <!-- Main Logic Script (Separated) -->
-    <script src="app.js"></script>
+    <script src="app.js?v=20261008-3"></script>
 </body>
 </html>
