@@ -176,8 +176,58 @@ function getStatusInfo(status) {
 }
 
 // ============================================================================
-// 6. CLIENTE HTTP AUTENTICADO CON COGNITO JWT
+// 5.1. TRADUCCIÓN DE ERRORES DE COGNITO A ESPAÑOL
 // ============================================================================
+function translateCognitoError(err) {
+    if (!err) return 'Ocurrió un error inesperado.';
+    const msg = String(err.message || err.code || err);
+
+    if (msg.includes('Password did not conform with policy') || msg.includes('InvalidPasswordException')) {
+        if (msg.includes('Password not long enough') || msg.includes('longer than')) {
+            return 'La contraseña debe tener al menos 8 caracteres.';
+        }
+        if (msg.includes('uppercase')) {
+            return 'La contraseña debe contener al menos una letra mayúscula.';
+        }
+        if (msg.includes('lowercase')) {
+            return 'La contraseña debe contener al menos una letra minúscula.';
+        }
+        if (msg.includes('numeric')) {
+            return 'La contraseña debe contener al menos un número.';
+        }
+        if (msg.includes('symbol')) {
+            return 'La contraseña debe contener al menos un carácter especial (ej. !@#$%^&*).';
+        }
+        return 'La contraseña debe tener mín. 8 caracteres, al menos 1 letra mayúscula, 1 número y 1 símbolo especial (!@#$%).';
+    }
+
+    if (err.code === 'UsernameExistsException' || msg.includes('already exists') || msg.includes('User already exists')) {
+        return 'Este correo electrónico ya está registrado. Por favor inicia sesión.';
+    }
+    if (err.code === 'UserNotConfirmedException' || msg.includes('User is not confirmed')) {
+        return 'Tu cuenta aún no está activada. Ingresa el código de 6 dígitos que enviamos a tu correo.';
+    }
+    if (err.code === 'NotAuthorizedException' || msg.includes('Incorrect username or password')) {
+        return 'Correo o contraseña incorrectos. Por favor verifica tus credenciales.';
+    }
+    if (err.code === 'UserNotFoundException' || msg.includes('User does not exist')) {
+        return 'No existe ninguna cuenta registrada con este correo.';
+    }
+    if (err.code === 'CodeMismatchException' || msg.includes('Invalid verification code')) {
+        return 'Código de verificación incorrecto. Revisa el código de 6 dígitos en tu bandeja.';
+    }
+    if (err.code === 'ExpiredCodeException' || msg.includes('expired')) {
+        return 'El código de verificación ha expirado. Presiona "Reenviar código".';
+    }
+    if (err.code === 'LimitExceededException' || msg.includes('Attempt limit exceeded')) {
+        return 'Has superado el límite de intentos permitidos. Espera unos minutos.';
+    }
+    if (err.code === 'InvalidParameterException') {
+        return 'Por favor verifica que todos los campos cumplan el formato solicitado.';
+    }
+
+    return err.message || 'Error al procesar la solicitud con AWS.';
+}
 function getToken() {
     if (!window.activeSession) {
         throw new Error('No hay una sesión activa de AWS Cognito.');
@@ -859,10 +909,14 @@ function showApplication(session) {
         }
     });
 
-    // Actualizar vistas
+    // Actualizar vistas y Navbar para modo autenticado
     document.getElementById('landingView')?.classList.add('hidden');
     document.getElementById('authModal')?.classList.add('hidden');
     document.getElementById('appView')?.classList.remove('hidden');
+
+    document.getElementById('navAuthPublic')?.classList.add('hidden');
+    document.getElementById('navAuthLogged')?.classList.remove('hidden');
+    document.getElementById('navRegisterLink')?.classList.add('hidden');
 
     // Headers & Badges
     const userEmailEl = document.getElementById('currentUserEmail');
@@ -920,11 +974,47 @@ function showApplication(session) {
 function showLanding() {
     window.activeSession = null;
     window.currentUserIsStaff = false;
+    window.currentUserData = null;
     window.currentItems = [];
     window.currentMatches = [];
 
+    // Limpieza estricta de todos los formularios y credenciales
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) loginForm.reset();
+    const loginEmail = document.getElementById('loginEmail');
+    if (loginEmail) loginEmail.value = '';
+    const loginPassword = document.getElementById('loginPassword');
+    if (loginPassword) loginPassword.value = '';
+    const loginError = document.getElementById('loginError');
+    if (loginError) {
+        loginError.textContent = '';
+        loginError.classList.add('hidden');
+    }
+
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) registerForm.reset();
+    const registerError = document.getElementById('registerError');
+    if (registerError) {
+        registerError.textContent = '';
+        registerError.classList.add('hidden');
+    }
+
+    const modalRegisterForm = document.getElementById('modalRegisterForm');
+    if (modalRegisterForm) modalRegisterForm.reset();
+    const modalRegisterError = document.getElementById('modalRegisterError');
+    if (modalRegisterError) {
+        modalRegisterError.textContent = '';
+        modalRegisterError.classList.add('hidden');
+    }
+
+    // Actualizar vistas y Navbar para modo público
     document.getElementById('appView')?.classList.add('hidden');
+    document.getElementById('authModal')?.classList.add('hidden');
     document.getElementById('landingView')?.classList.remove('hidden');
+
+    document.getElementById('navAuthPublic')?.classList.remove('hidden');
+    document.getElementById('navAuthLogged')?.classList.add('hidden');
+    document.getElementById('navRegisterLink')?.classList.remove('hidden');
 }
 
 // ============================================================================
@@ -932,6 +1022,71 @@ function showLanding() {
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+
+    // 0. Sanitizadores en tiempo real para inputs estrictos
+    function attachInputSanitizer(id, type) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('input', e => {
+            if (type === 'letters') {
+                // Solo letras (incluye acentos, ñ/Ñ) y espacios
+                e.target.value = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '');
+            } else if (type === 'dni') {
+                // Solo números, máx 8 dígitos
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8);
+            } else if (type === 'phone') {
+                // Solo números, máx 9 dígitos
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9);
+            }
+        });
+    }
+
+    attachInputSanitizer('regName', 'letters');
+    attachInputSanitizer('modalRegName', 'letters');
+    attachInputSanitizer('regDni', 'dni');
+    attachInputSanitizer('modalRegDni', 'dni');
+    attachInputSanitizer('regPhone', 'phone');
+    attachInputSanitizer('modalRegPhone', 'phone');
+
+    // 0.1. Navegación fluida del Navbar preservando la sesión
+    document.querySelectorAll('.nav-link-anchor').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                e.preventDefault();
+                const targetId = href.substring(1);
+                const targetEl = document.getElementById(targetId);
+
+                // Permitir ver las secciones públicas del mall sin cerrar la sesión
+                document.getElementById('landingView')?.classList.remove('hidden');
+                document.getElementById('appView')?.classList.add('hidden');
+
+                if (targetEl) {
+                    targetEl.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    });
+
+    const navPortalBtn = document.getElementById('navPortalBtn');
+    if (navPortalBtn) {
+        navPortalBtn.addEventListener('click', () => {
+            if (window.activeSession) {
+                document.getElementById('landingView')?.classList.add('hidden');
+                document.getElementById('appView')?.classList.remove('hidden');
+                loadData();
+            }
+        });
+    }
+
+    const navLogoutBtn = document.getElementById('navLogoutBtn');
+    if (navLogoutBtn) {
+        navLogoutBtn.addEventListener('click', () => {
+            const currentUser = userPool.getCurrentUser();
+            if (currentUser) currentUser.signOut();
+            showLanding();
+        });
+    }
 
     // Visor de fotos modal (delegación de eventos)
     document.addEventListener('click', event => {
@@ -1085,7 +1240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         onFailure: function(err) {
                             console.error(err);
                             if (loginError) {
-                                loginError.textContent = err.message || 'Error al cambiar contraseña.';
+                                loginError.textContent = translateCognitoError(err);
                                 loginError.classList.remove('hidden');
                             }
                             if (loginSubmit) {
@@ -1096,7 +1251,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 },
                 onFailure: function(err) {
-                    console.error(err);
+                    console.error('Login failure:', err);
                     if (loginSubmit) {
                         loginSubmit.disabled = false;
                         loginSubmit.textContent = 'Iniciar Sesión';
@@ -1113,7 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
                     if (loginError) {
-                        loginError.textContent = err.message || 'Credenciales no válidas.';
+                        loginError.textContent = translateCognitoError(err);
                         loginError.classList.remove('hidden');
                     }
                 }
@@ -1131,10 +1286,6 @@ document.addEventListener('DOMContentLoaded', () => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             if (errorEl) errorEl.classList.add('hidden');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Creando cuenta...';
-            }
 
             const prefix = formId === 'modalRegisterForm' ? 'modalReg' : 'reg';
             const name = document.getElementById(`${prefix}Name`).value.trim();
@@ -1142,6 +1293,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const dni = document.getElementById(`${prefix}Dni`).value.trim();
             const phone = document.getElementById(`${prefix}Phone`).value.trim();
             const password = document.getElementById(`${prefix}Password`).value;
+
+            // Validaciones locales antes de llamar a AWS
+            if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(name)) {
+                if (errorEl) {
+                    errorEl.textContent = 'El nombre solo debe contener letras y espacios.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!/^\d{8}$/.test(dni)) {
+                if (errorEl) {
+                    errorEl.textContent = 'El DNI debe tener exactamente 8 dígitos numéricos.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (!/^\d{9}$/.test(phone)) {
+                if (errorEl) {
+                    errorEl.textContent = 'El teléfono debe tener exactamente 9 dígitos numéricos.';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (password.length < 8) {
+                if (errorEl) {
+                    errorEl.textContent = 'La contraseña debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 símbolo especial (!@#$%).';
+                    errorEl.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creando cuenta...';
+            }
 
             const attributeList = [
                 new AmazonCognitoIdentity.CognitoUserAttribute({ Name: 'name', Value: name }),
@@ -1154,9 +1343,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     submitBtn.textContent = 'Crear Cuenta y Continuar';
                 }
                 if (err) {
-                    console.error(err);
+                    console.error('Sign up error:', err);
                     if (errorEl) {
-                        errorEl.textContent = err.message || 'Error al registrar usuario.';
+                        errorEl.textContent = translateCognitoError(err);
                         errorEl.classList.remove('hidden');
                     }
                     return;
@@ -1217,13 +1406,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (err) {
                     console.error('Error confirmRegistration:', err);
                     if (verifyError) {
-                        if (err.code === 'CodeMismatchException') {
-                            verifyError.textContent = 'Código incorrecto. Revisa el correo y vuelve a intentar.';
-                        } else if (err.code === 'ExpiredCodeException') {
-                            verifyError.textContent = 'El código ha expirado. Haz clic en "Reenviar código".';
-                        } else {
-                            verifyError.textContent = err.message || 'Error al verificar el código.';
-                        }
+                        verifyError.textContent = translateCognitoError(err);
                         verifyError.classList.remove('hidden');
                     }
                     return;
@@ -1261,7 +1444,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (err) {
                     console.error('Error resendConfirmationCode:', err);
                     if (verifyError) {
-                        verifyError.textContent = err.message || 'No se pudo reenviar el código.';
+                        verifyError.textContent = translateCognitoError(err);
                         verifyError.classList.remove('hidden');
                     }
                 } else {

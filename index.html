@@ -43,11 +43,11 @@
             </a>
 
             <!-- Navigation Links -->
-            <nav class="hidden md:flex items-center gap-8 text-sm font-medium theme-text-secondary">
-                <a href="#hero" class="hover:text-sky-600 transition-colors">Inicio</a>
-                <a href="#areas" class="hover:text-sky-600 transition-colors">Áreas del Mall</a>
-                <a href="#metrics" class="hover:text-sky-600 transition-colors">Impacto</a>
-                <a href="#register" class="hover:text-sky-600 transition-colors">Registro</a>
+            <nav id="mainNavLinks" class="hidden md:flex items-center gap-8 text-sm font-medium theme-text-secondary">
+                <a href="#hero" class="nav-link-anchor hover:text-sky-600 transition-colors">Inicio</a>
+                <a href="#areas" class="nav-link-anchor hover:text-sky-600 transition-colors">Áreas del Mall</a>
+                <a href="#metrics" class="nav-link-anchor hover:text-sky-600 transition-colors">Impacto</a>
+                <a href="#register" id="navRegisterLink" class="nav-link-anchor hover:text-sky-600 transition-colors">Registro</a>
             </nav>
 
             <!-- Actions & Theme Toggle -->
@@ -64,20 +64,41 @@
                     <span id="themeText" class="text-xs font-semibold hidden sm:inline">Modo Oscuro</span>
                 </button>
 
-                <!-- Auth Buttons -->
-                <button
-                    type="button"
-                    class="openLoginBtn px-4 py-2 text-xs sm:text-sm font-semibold theme-text-secondary hover:theme-text-primary transition-colors cursor-pointer"
-                >
-                    Iniciar Sesión
-                </button>
+                <!-- Auth Buttons (Modo Público) -->
+                <div id="navAuthPublic" class="flex items-center gap-2">
+                    <button
+                        type="button"
+                        class="openLoginBtn px-4 py-2 text-xs sm:text-sm font-semibold theme-text-secondary hover:theme-text-primary transition-colors cursor-pointer"
+                    >
+                        Iniciar Sesión
+                    </button>
 
-                <button
-                    type="button"
-                    class="openRegisterBtn btn-pill px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20 cursor-pointer"
-                >
-                    Reportar Objeto
-                </button>
+                    <button
+                        type="button"
+                        class="openRegisterBtn btn-pill px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20 cursor-pointer"
+                    >
+                        Reportar Objeto
+                    </button>
+                </div>
+
+                <!-- Auth Buttons (Modo Sesión Activa) -->
+                <div id="navAuthLogged" class="hidden flex items-center gap-2">
+                    <button
+                        type="button"
+                        id="navPortalBtn"
+                        class="btn-pill px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-sky-500/20 cursor-pointer flex items-center gap-1.5"
+                    >
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                        <span>Mi Portal</span>
+                    </button>
+                    <button
+                        type="button"
+                        id="navLogoutBtn"
+                        class="px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                    >
+                        Salir
+                    </button>
+                </div>
             </div>
         </div>
     </header>
@@ -260,7 +281,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label for="regName" class="block text-xs font-semibold theme-text-secondary mb-1.5">
-                                Nombre completo *
+                                Nombre completo (solo letras) *
                             </label>
                             <input
                                 type="text"
@@ -288,26 +309,32 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label for="regDni" class="block text-xs font-semibold theme-text-secondary mb-1.5">
-                                DNI / Documento de Identidad *
+                                DNI (exactamente 8 dígitos) *
                             </label>
                             <input
                                 type="text"
                                 id="regDni"
                                 required
-                                placeholder="8 dígitos"
+                                maxlength="8"
+                                inputmode="numeric"
+                                pattern="[0-9]{8}"
+                                placeholder="8 dígitos numéricos"
                                 class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
                             >
                         </div>
 
                         <div>
                             <label for="regPhone" class="block text-xs font-semibold theme-text-secondary mb-1.5">
-                                Teléfono de contacto *
+                                Teléfono móvil (9 dígitos) *
                             </label>
                             <input
                                 type="tel"
                                 id="regPhone"
                                 required
-                                placeholder="+51 987 654 321"
+                                maxlength="9"
+                                inputmode="numeric"
+                                pattern="[0-9]{9}"
+                                placeholder="987654321"
                                 class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
                             >
                         </div>
@@ -321,9 +348,12 @@
                             type="password"
                             id="regPassword"
                             required
-                            placeholder="Mínimo 8 caracteres"
+                            placeholder="Mín. 8 caracteres (1 mayúscula, 1 número y 1 símbolo como @$!%*?&)"
                             class="theme-input w-full px-4 py-3.5 rounded-2xl text-sm outline-none transition-all"
                         >
+                        <p class="text-[11px] theme-text-muted mt-1">
+                            Requisitos: Mínimo 8 caracteres, al menos 1 letra mayúscula, 1 número y 1 carácter especial (ej. !@#$%^&*).
+                        </p>
                     </div>
 
                     <!-- Mensaje de Aceptación de Notificaciones AWS SNS -->
@@ -442,7 +472,7 @@
                 <form id="modalRegisterForm" class="space-y-3.5" autocomplete="off">
                     <div>
                         <label for="modalRegName" class="block text-xs font-semibold theme-text-secondary mb-1">
-                            Nombre completo *
+                            Nombre completo (solo letras) *
                         </label>
                         <input
                             type="text"
@@ -468,12 +498,15 @@
                         </div>
                         <div>
                             <label for="modalRegDni" class="block text-xs font-semibold theme-text-secondary mb-1">
-                                DNI *
+                                DNI (8 dígitos) *
                             </label>
                             <input
                                 type="text"
                                 id="modalRegDni"
                                 required
+                                maxlength="8"
+                                inputmode="numeric"
+                                pattern="[0-9]{8}"
                                 placeholder="8 dígitos"
                                 class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
                             >
@@ -483,12 +516,15 @@
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label for="modalRegPhone" class="block text-xs font-semibold theme-text-secondary mb-1">
-                                Teléfono *
+                                Teléfono (9 dígitos) *
                             </label>
                             <input
                                 type="tel"
                                 id="modalRegPhone"
                                 required
+                                maxlength="9"
+                                inputmode="numeric"
+                                pattern="[0-9]{9}"
                                 placeholder="987654321"
                                 class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
                             >
@@ -501,11 +537,15 @@
                                 type="password"
                                 id="modalRegPassword"
                                 required
-                                placeholder="Mín. 8 caracteres"
+                                placeholder="Mín. 8 car. (1 Mayús, 1 Núm, 1 Símbolo)"
                                 class="theme-input w-full px-3 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
                             >
                         </div>
                     </div>
+
+                    <p class="text-[10px] theme-text-muted">
+                        La contraseña debe tener mín. 8 caracteres, 1 mayúscula, 1 número y 1 símbolo especial (!@#$%).
+                    </p>
 
                     <p id="modalRegisterError" class="hidden text-xs text-red-500 font-medium"></p>
 
