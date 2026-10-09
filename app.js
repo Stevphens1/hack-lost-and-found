@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * Lost & Found Portal - Main Application Logic
- * AWS Services: Amazon Cognito, Amazon API Gateway, Amazon S3, Amazon DynamoDB, Amazon SES
+ * AWS Services: Amazon Cognito, Amazon API Gateway, Amazon S3, Amazon DynamoDB, Amazon SNS
  * ============================================================================
  */
 

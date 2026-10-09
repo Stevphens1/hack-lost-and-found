@@ -38,7 +38,7 @@ flowchart TD
     
     S3_Media["🪣 Amazon S3 (Fotos Objetos)"]
     DDB["🗄️ Amazon DynamoDB (NoSQL)"]
-    SES["📧 Amazon SES (Email Service)"]
+    SNS["📢 Amazon SNS (Notification Service)"]
 
     User & Staff --> CF --> S3_Web
     User & Staff --> Cognito
@@ -49,7 +49,7 @@ flowchart TD
     APIGW --> L_Items --> DDB
     L_Items --> L_Match --> DDB
     APIGW --> L_Valid --> DDB
-    L_Valid --> SES
+    L_Valid --> SNS
 ```
 
 ### 1. **Amazon S3 (Simple Storage Service)**
@@ -86,8 +86,8 @@ flowchart TD
   * **Tabla de Items:** Registros de objetos perdidos y encontrados con metadatos (título, categoría, zona, fecha, descripción, URLs de fotos y estado).
   * **Tabla de Matches:** Relaciones de coincidencia detectadas, porcentaje de similitud (`matchScore`), criterios cumplidos y estado de validación (`POSSIBLE`, `VALIDATED`, `REJECTED`).
 
-### 6. **Amazon SES (Simple Email Service)**
-* **Notificaciones Transaccionales:** Envío automatizado de correos al visitante cuando el personal de seguridad valida que un objeto encontrado le pertenece.
+### 6. **Amazon SNS (Simple Notification Service)**
+* **Notificaciones Event-Driven (Pub/Sub):** Envío automatizado de alertas de correo al visitante cuando el personal de seguridad valida que un objeto encontrado le pertenece.
 * Notificación de citas de recojo con instrucciones del centro de atención al cliente.
 
 ### 7. **Amazon CloudFront (Content Delivery Network - Opcional)**
@@ -102,7 +102,7 @@ flowchart TD
 * **Interruptor de Modo Claro / Modo Oscuro:** Switch superior con iconos de Sol/Luna que almacena la preferencia del usuario en `localStorage`.
 * **Galería de Áreas del Mall:** Tarjetas visuales de alta resolución para *Patio de Comidas, Tiendas Comerciales, Estacionamientos y Cines*.
 * **Métricas de Impacto Social:** Indicadores de éxito (+1,250 objetos devueltos, 94% efectividad, <24h tiempo de respuesta).
-* **Registro Directo de Visitantes:** Formulario completo para nuevos usuarios con Nombre, Email, DNI, Teléfono, Contraseña y aviso de verificación de correo por AWS SES.
+* **Registro Directo de Visitantes:** Formulario completo para nuevos usuarios con Nombre, Email, DNI, Teléfono, Contraseña y aviso de suscripción a notificaciones por Amazon SNS.
 
 ### B. Portal de Gestión (Staff & Cliente)
 * **Detección Automática de Rol:** La aplicación adapta su interfaz según los grupos de Cognito:
