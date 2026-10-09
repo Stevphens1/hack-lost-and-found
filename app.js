@@ -1297,20 +1297,11 @@ function applyMallBotExtractedData(extracted, isComplete) {
 
     updateMallBotLiveBadges(extracted);
 
-    // Si el usuario ya adjuntó foto o la IA marcó completitud, mostrar botón de guardado
+    // Mostrar barra de guardado si la IA marcó completitud o si hay foto adjunta
     const submitWrap = document.getElementById('mallBotSubmitWrap');
     if (submitWrap) {
-        const titleVal = document.getElementById('title')?.value?.trim();
-        const catVal = document.getElementById('category')?.value;
-        const zoneVal = document.getElementById('zone')?.value;
-        const dateVal = document.getElementById('itemDate')?.value;
-        const descVal = document.getElementById('description')?.value?.trim();
-        const hasAllFields = Boolean(titleVal && catVal && zoneVal && dateVal && descVal);
-
-        if (hasAllFields && (isComplete || window.mallBotAttachedPhoto)) {
+        if (isComplete || window.mallBotAttachedPhoto) {
             submitWrap.classList.remove('hidden');
-        } else {
-            submitWrap.classList.add('hidden');
         }
     }
 }
@@ -1431,6 +1422,7 @@ async function sendMallBotMessage(userText) {
             const noBtn = loadingMsgEl.querySelector('.mallbot-quick-photo-no');
             if (noBtn) {
                 noBtn.addEventListener('click', () => {
+                    document.getElementById('mallBotSubmitWrap')?.classList.remove('hidden');
                     sendMallBotMessage('No tengo foto');
                 });
             }
@@ -1438,6 +1430,10 @@ async function sendMallBotMessage(userText) {
 
         // 6. Aplicar los campos extraídos al formulario
         applyMallBotExtractedData(result.extracted || {}, result.isComplete || false);
+
+        if (result.isComplete) {
+            document.getElementById('mallBotSubmitWrap')?.classList.remove('hidden');
+        }
 
         if (window.lucide) lucide.createIcons();
 
@@ -1672,15 +1668,8 @@ function initMallBot() {
                 };
                 updateMallBotLiveBadges(curData);
 
-                // Si los datos requeridos están listos, mostrar botón Guardar Reporte Ahora
-                const titleVal = document.getElementById('title')?.value?.trim();
-                const catVal = document.getElementById('category')?.value;
-                const zoneVal = document.getElementById('zone')?.value;
-                const dateVal = document.getElementById('itemDate')?.value;
-                const descVal = document.getElementById('description')?.value?.trim();
-                if (titleVal && catVal && zoneVal && dateVal && descVal) {
-                    document.getElementById('mallBotSubmitWrap')?.classList.remove('hidden');
-                }
+                // Mostrar botón Guardar Reporte
+                document.getElementById('mallBotSubmitWrap')?.classList.remove('hidden');
             };
             reader.readAsDataURL(file);
         });
