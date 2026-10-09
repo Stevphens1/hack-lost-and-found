@@ -1257,9 +1257,12 @@ function applyMallBotExtractedData(extracted, isComplete) {
                 if (categoryOtherContainer) categoryOtherContainer.classList.remove('hidden');
                 if (categoryOtherInput) {
                     categoryOtherInput.required = true;
-                    const customText = (rawCatLower !== 'otros' && rawCatLower !== 'otro') ? rawCat : (extracted.title || categoryOtherInput.value || '');
+                    const customText = (rawCatLower !== 'otros' && rawCatLower !== 'otro') ? rawCat : (extracted.title || categoryOtherInput.value || 'Objeto personalizado');
                     categoryOtherInput.value = customText;
                     categoryOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    categoryOtherInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    categoryOtherInput.classList.add('field-autofilled');
+                    setTimeout(() => categoryOtherInput.classList.remove('field-autofilled'), 2000);
                 }
             }
 
@@ -1326,9 +1329,12 @@ function applyMallBotExtractedData(extracted, isComplete) {
                 if (zoneOtherContainer) zoneOtherContainer.classList.remove('hidden');
                 if (zoneOtherInput) {
                     zoneOtherInput.required = true;
-                    const customZoneText = (!rawZoneLower.includes('otra zona')) ? rawZone : (zoneOtherInput.value || '');
+                    const customZoneText = (!rawZoneLower.includes('otra zona')) ? rawZone : (zoneOtherInput.value || 'Zona no especificada');
                     zoneOtherInput.value = customZoneText;
                     zoneOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    zoneOtherInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    zoneOtherInput.classList.add('field-autofilled');
+                    setTimeout(() => zoneOtherInput.classList.remove('field-autofilled'), 2000);
                 }
             }
 
