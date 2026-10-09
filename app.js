@@ -1205,24 +1205,56 @@ function applyMallBotExtractedData(extracted, isComplete) {
         const categoryOtherContainer = document.getElementById('categoryOtherContainer');
         const categoryOtherInput = document.getElementById('categoryOtherInput');
         if (categorySelect) {
-            const rawCat = String(extracted.category).toLowerCase();
-            let matched = false;
+            const rawCat = String(extracted.category).toLowerCase().trim();
+            let matchedIndex = -1;
+
             for (let i = 0; i < categorySelect.options.length; i++) {
-                const optText = categorySelect.options[i].text.toLowerCase();
-                const optVal = categorySelect.options[i].value.toLowerCase();
-                if (rawCat === optVal || rawCat === optText || rawCat.includes(optVal) || optText.includes(rawCat) || rawCat.includes(optText)) {
-                    categorySelect.selectedIndex = i;
-                    matched = true;
-                    if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
+                const optVal = categorySelect.options[i].value;
+                if (!optVal || optVal.trim() === '') continue; // Ignorar el placeholder vacío
+
+                const optTextLower = categorySelect.options[i].text.toLowerCase();
+                const optValLower = optVal.toLowerCase();
+
+                if (rawCat === optValLower || rawCat === optTextLower) {
+                    matchedIndex = i;
+                    break;
+                }
+                if (optValLower !== 'otros' && (rawCat.includes(optValLower) || optValLower.includes(rawCat) || rawCat.includes(optTextLower) || optTextLower.includes(rawCat))) {
+                    matchedIndex = i;
                     break;
                 }
             }
-            if (!matched && categoryOtherInput) {
+
+            // Mapeo inteligente por palabras clave comunes si no hubo coincidencia exacta
+            if (matchedIndex === -1) {
+                if (rawCat.includes('reloj') || rawCat.includes('joya') || rawCat.includes('anillo') || rawCat.includes('collar') || rawCat.includes('pulsera')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Joyas'));
+                } else if (rawCat.includes('polo') || rawCat.includes('ropa') || rawCat.includes('prenda') || rawCat.includes('pantalon') || rawCat.includes('casaca') || rawCat.includes('polera')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Prendas'));
+                } else if (rawCat.includes('celular') || rawCat.includes('telefono') || rawCat.includes('iphone') || rawCat.includes('smartphone') || rawCat.includes('tablet')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Smartphones'));
+                } else if (rawCat.includes('billetera') || rawCat.includes('cartera') || rawCat.includes('tarjeta') || rawCat.includes('dni') || rawCat.includes('documento')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Billeteras'));
+                } else if (rawCat.includes('mochila') || rawCat.includes('bolso') || rawCat.includes('morral') || rawCat.includes('maleta')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Mochilas'));
+                } else if (rawCat.includes('laptop') || rawCat.includes('computadora') || rawCat.includes('audifono') || rawCat.includes('gadget') || rawCat.includes('cargador')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Laptops'));
+                } else if (rawCat.includes('llave') || rawCat.includes('llavero')) {
+                    matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Llaves'));
+                }
+            }
+
+            if (matchedIndex !== -1) {
+                categorySelect.selectedIndex = matchedIndex;
+                if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
+                if (categoryOtherInput) categoryOtherInput.value = '';
+            } else if (categoryOtherInput) {
                 categorySelect.value = 'Otros';
                 if (categoryOtherContainer) categoryOtherContainer.classList.remove('hidden');
                 categoryOtherInput.value = extracted.category;
                 categoryOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+
             categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
             categorySelect.classList.add('field-autofilled');
             setTimeout(() => categorySelect.classList.remove('field-autofilled'), 2000);
@@ -1235,24 +1267,56 @@ function applyMallBotExtractedData(extracted, isComplete) {
         const zoneOtherContainer = document.getElementById('zoneOtherContainer');
         const zoneOtherInput = document.getElementById('zoneOtherInput');
         if (zoneSelect) {
-            const rawZone = String(extracted.zone).toLowerCase();
-            let matched = false;
+            const rawZone = String(extracted.zone).toLowerCase().trim();
+            let matchedIndex = -1;
+
             for (let i = 0; i < zoneSelect.options.length; i++) {
-                const optText = zoneSelect.options[i].text.toLowerCase();
-                const optVal = zoneSelect.options[i].value.toLowerCase();
-                if (rawZone === optVal || rawZone === optText || rawZone.includes(optVal) || optText.includes(rawZone) || rawZone.includes(optText)) {
-                    zoneSelect.selectedIndex = i;
-                    matched = true;
-                    if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
+                const optVal = zoneSelect.options[i].value;
+                if (!optVal || optVal.trim() === '') continue; // Ignorar el placeholder vacío
+
+                const optTextLower = zoneSelect.options[i].text.toLowerCase();
+                const optValLower = optVal.toLowerCase();
+
+                if (rawZone === optValLower || rawZone === optTextLower) {
+                    matchedIndex = i;
+                    break;
+                }
+                if (optValLower !== 'otra zona...' && (rawZone.includes(optValLower) || optValLower.includes(rawZone) || rawZone.includes(optTextLower) || optTextLower.includes(rawZone))) {
+                    matchedIndex = i;
                     break;
                 }
             }
-            if (!matched && zoneOtherInput) {
+
+            // Mapeo inteligente por palabras clave de zonas
+            if (matchedIndex === -1) {
+                if (rawZone.includes('comida') || rawZone.includes('patio') || rawZone.includes('restaurante') || rawZone.includes('food')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Patio de Comidas'));
+                } else if (rawZone.includes('cine') || rawZone.includes('cinemark') || rawZone.includes('cineplanet') || rawZone.includes('pelicula')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Cines'));
+                } else if (rawZone.includes('estacionamiento') || rawZone.includes('cochera') || rawZone.includes('s1') || rawZone.includes('s2') || rawZone.includes('auto')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Estacionamiento'));
+                } else if (rawZone.includes('bano') || rawZone.includes('baño') || rawZone.includes('sshh') || rawZone.includes('servicio')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Baños'));
+                } else if (rawZone.includes('entrada') || rawZone.includes('puerta') || rawZone.includes('ingreso') || rawZone.includes('acceso')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Entrada Principal'));
+                } else if (rawZone.includes('departamental') || rawZone.includes('ripley') || rawZone.includes('falabella') || rawZone.includes('oechsle') || rawZone.includes('piso 2')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Departamentales'));
+                } else if (rawZone.includes('pasillo') || rawZone.includes('tienda') || rawZone.includes('piso 1')) {
+                    matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Pasillo Central'));
+                }
+            }
+
+            if (matchedIndex !== -1) {
+                zoneSelect.selectedIndex = matchedIndex;
+                if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
+                if (zoneOtherInput) zoneOtherInput.value = '';
+            } else if (zoneOtherInput) {
                 zoneSelect.value = 'Otra Zona...';
                 if (zoneOtherContainer) zoneOtherContainer.classList.remove('hidden');
                 zoneOtherInput.value = extracted.zone;
                 zoneOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+
             zoneSelect.dispatchEvent(new Event('change', { bubbles: true }));
             zoneSelect.classList.add('field-autofilled');
             setTimeout(() => zoneSelect.classList.remove('field-autofilled'), 2000);
@@ -1484,20 +1548,25 @@ async function submitReportFromMallBot() {
                 photoKey = uploadData.photoKey || presignedRes.photoKey || null;
 
                 if (uploadUrl) {
-                    const s3Res = await fetch(uploadUrl, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': fileMime },
-                        body: photoFile
-                    });
+                    try {
+                        const s3Res = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': fileMime },
+                            body: photoFile
+                        });
 
-                    if (!s3Res.ok) {
-                        console.warn('S3 upload HTTP code:', s3Res.status);
-                        throw new Error(`Fallo en Amazon S3 (Código ${s3Res.status})`);
+                        if (!s3Res.ok) {
+                            console.warn('S3 upload HTTP code:', s3Res.status);
+                            throw new Error(`Código ${s3Res.status}`);
+                        }
+                    } catch (fetchErr) {
+                        console.warn('Advertencia S3 (revisa CORS en tu bucket S3):', fetchErr);
+                        // Permitir continuar el registro en DynamoDB sin interrumpir el flujo
+                        imageUrl = imageUrl || null;
                     }
                 }
             } catch (s3Err) {
-                console.error('Error subiendo foto:', s3Err);
-                throw new Error(`No se pudo subir la fotografía a S3: ${s3Err.message}`);
+                console.warn('Error subiendo foto:', s3Err);
             }
         }
 
