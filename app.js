@@ -15,6 +15,7 @@ const CLIENT_ID = '65f9o7e1mst13csirabv4c2kd9';
 const API_BASE_URL = 'https://zhylygp2y7.execute-api.us-east-1.amazonaws.com/dev';
 const ITEMS_URL = `${API_BASE_URL}/items`;
 const MATCHES_URL = `${API_BASE_URL}/matches`;
+const CHAT_URL = `${API_BASE_URL}/chat`;
 
 const poolData = {
     UserPoolId: USER_POOL_ID,
@@ -1010,6 +1011,9 @@ function showApplication(session) {
     // Mantener visible el enlace de registro/reporte en navbar
     document.getElementById('navRegisterLink')?.classList.remove('hidden');
 
+    // Mostrar botón flotante del Asistente MallBot en modo autenticado
+    document.getElementById('mallBotFloatingBtn')?.classList.remove('hidden');
+
     // Headers & Badges
     const userEmailEl = document.getElementById('currentUserEmail');
     if (userEmailEl) userEmailEl.textContent = payload.email || '';
@@ -1070,6 +1074,10 @@ function showLanding() {
     window.currentItems = [];
     window.currentMatches = [];
 
+    // Ocultar Asistente MallBot
+    document.getElementById('mallBotFloatingBtn')?.classList.add('hidden');
+    document.getElementById('mallBotPanel')?.classList.add('hidden');
+
     // Limpieza estricta de todos los formularios y credenciales
     const loginForm = document.getElementById('loginForm');
     if (loginForm) loginForm.reset();
@@ -1107,6 +1115,369 @@ function showLanding() {
     document.getElementById('navAuthPublic')?.classList.remove('hidden');
     document.getElementById('navAuthLogged')?.classList.add('hidden');
     document.getElementById('navRegisterLink')?.classList.remove('hidden');
+}
+
+// ============================================================================
+// 13.5. ASISTENTE VIRTUAL IA (MALLBOT · AMAZON BEDROCK NOVA LITE)
+// ============================================================================
+window.mallBotHistory = [];
+window.mallBotIsListening = false;
+window.mallBotRecognition = null;
+
+function toggleMallBot(forceOpen = null) {
+    const panel = document.getElementById('mallBotPanel');
+    if (!panel) return;
+    const shouldOpen = forceOpen !== null ? forceOpen : panel.classList.contains('hidden');
+    if (shouldOpen) {
+        panel.classList.remove('hidden');
+        document.getElementById('mallBotInput')?.focus();
+    } else {
+        panel.classList.add('hidden');
+        if (window.mallBotIsListening && window.mallBotRecognition) {
+            window.mallBotRecognition.stop();
+        }
+    }
+}
+
+function appendMallBotMessage(sender, text, isHtml = false) {
+    const messagesContainer = document.getElementById('mallBotMessages');
+    if (!messagesContainer) return;
+
+    const msgEl = document.createElement('div');
+    msgEl.className = `mallbot-msg ${sender === 'user' ? 'mallbot-msg-user' : 'mallbot-msg-bot'}`;
+    
+    if (isHtml) {
+        msgEl.innerHTML = text;
+    } else {
+        msgEl.textContent = text;
+    }
+
+    messagesContainer.appendChild(msgEl);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (window.lucide) lucide.createIcons();
+    return msgEl;
+}
+
+function updateMallBotLiveBadges(extracted) {
+    const badgesContainer = document.getElementById('mallBotStateBadges');
+    if (!badgesContainer) return;
+
+    if (!extracted || Object.keys(extracted).length === 0) {
+        badgesContainer.innerHTML = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 theme-text-muted">Esperando datos...</span>';
+        return;
+    }
+
+    const pills = [];
+    if (extracted.title) pills.push(`📌 ${escapeHtml(extracted.title)}`);
+    if (extracted.category) pills.push(`🏷️ ${escapeHtml(extracted.category)}`);
+    if (extracted.zone) pills.push(`📍 ${escapeHtml(extracted.zone)}`);
+    if (extracted.date) pills.push(`📅 ${escapeHtml(extracted.date)}`);
+
+    if (pills.length === 0) {
+        badgesContainer.innerHTML = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 theme-text-muted">Analizando...</span>';
+    } else {
+        badgesContainer.innerHTML = pills.map(p => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 font-medium whitespace-nowrap">${p}</span>`).join('');
+    }
+}
+
+function applyMallBotExtractedData(extracted, isComplete) {
+    if (!extracted || typeof extracted !== 'object') return;
+
+    // 1. Título
+    if (extracted.title) {
+        const titleInput = document.getElementById('title');
+        if (titleInput && (!titleInput.value || titleInput.value.length < 3)) {
+            titleInput.value = extracted.title;
+            titleInput.classList.add('field-autofilled');
+            setTimeout(() => titleInput.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
+    // 2. Categoría
+    if (extracted.category) {
+        const categorySelect = document.getElementById('category');
+        const categoryOtherContainer = document.getElementById('categoryOtherContainer');
+        const categoryOtherInput = document.getElementById('categoryOtherInput');
+        if (categorySelect) {
+            const rawCat = String(extracted.category).toLowerCase();
+            let matched = false;
+            for (let i = 0; i < categorySelect.options.length; i++) {
+                const optText = categorySelect.options[i].text.toLowerCase();
+                const optVal = categorySelect.options[i].value.toLowerCase();
+                if (rawCat.includes(optVal) || optText.includes(rawCat) || rawCat.includes(optText)) {
+                    categorySelect.selectedIndex = i;
+                    matched = true;
+                    if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
+                    break;
+                }
+            }
+            if (!matched && categoryOtherInput) {
+                categorySelect.value = 'Otros';
+                if (categoryOtherContainer) categoryOtherContainer.classList.remove('hidden');
+                categoryOtherInput.value = extracted.category;
+            }
+            categorySelect.classList.add('field-autofilled');
+            setTimeout(() => categorySelect.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
+    // 3. Zona
+    if (extracted.zone) {
+        const zoneSelect = document.getElementById('zone');
+        const zoneOtherContainer = document.getElementById('zoneOtherContainer');
+        const zoneOtherInput = document.getElementById('zoneOtherInput');
+        if (zoneSelect) {
+            const rawZone = String(extracted.zone).toLowerCase();
+            let matched = false;
+            for (let i = 0; i < zoneSelect.options.length; i++) {
+                const optText = zoneSelect.options[i].text.toLowerCase();
+                const optVal = zoneSelect.options[i].value.toLowerCase();
+                if (rawZone.includes(optVal) || optText.includes(rawZone) || rawZone.includes(optText)) {
+                    zoneSelect.selectedIndex = i;
+                    matched = true;
+                    if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
+                    break;
+                }
+            }
+            if (!matched && zoneOtherInput) {
+                zoneSelect.value = 'Otra Zona...';
+                if (zoneOtherContainer) zoneOtherContainer.classList.remove('hidden');
+                zoneOtherInput.value = extracted.zone;
+            }
+            zoneSelect.classList.add('field-autofilled');
+            setTimeout(() => zoneSelect.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
+    // 4. Fecha
+    if (extracted.date) {
+        const dateInput = document.getElementById('itemDate');
+        if (dateInput) {
+            dateInput.value = extracted.date;
+            dateInput.classList.add('field-autofilled');
+            setTimeout(() => dateInput.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
+    // 5. Descripción
+    if (extracted.description) {
+        const descInput = document.getElementById('description');
+        if (descInput && (!descInput.value || descInput.value.length < 5)) {
+            descInput.value = extracted.description;
+            descInput.classList.add('field-autofilled');
+            setTimeout(() => descInput.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
+    updateMallBotLiveBadges(extracted);
+
+    // Si todos los datos están listos, mostrar botón de envío en el chat
+    const submitWrap = document.getElementById('mallBotSubmitWrap');
+    if (submitWrap) {
+        if (isComplete) {
+            submitWrap.classList.remove('hidden');
+        } else {
+            submitWrap.classList.add('hidden');
+        }
+    }
+}
+
+async function sendMallBotMessage(userText) {
+    const text = (userText || '').trim();
+    if (!text) return;
+
+    const input = document.getElementById('mallBotInput');
+    const sendBtn = document.getElementById('mallBotSendBtn');
+    if (input) input.value = '';
+    if (sendBtn) sendBtn.disabled = true;
+
+    // 1. Mostrar mensaje del usuario en el chat
+    appendMallBotMessage('user', text);
+
+    // 2. Mostrar indicador de "MallBot está escribiendo..."
+    const loadingMsgEl = appendMallBotMessage('bot', '<span class="lf-ai-spinner mr-2"></span> MallBot está pensando...', true);
+
+    // 3. Recopilar datos actuales del formulario
+    const currentData = {
+        title: document.getElementById('title')?.value?.trim() || null,
+        category: document.getElementById('category')?.value || null,
+        zone: document.getElementById('zone')?.value || null,
+        date: document.getElementById('itemDate')?.value || null,
+        description: document.getElementById('description')?.value?.trim() || null
+    };
+
+    try {
+        const result = await apiFetch(CHAT_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                message: text,
+                history: window.mallBotHistory,
+                currentData: currentData
+            })
+        });
+
+        // 4. Actualizar historial local
+        window.mallBotHistory.push({ role: 'user', text: text });
+        if (result.reply) {
+            window.mallBotHistory.push({ role: 'assistant', text: result.reply });
+        }
+
+        // 5. Reemplazar indicador de carga por la respuesta
+        if (loadingMsgEl) {
+            loadingMsgEl.innerHTML = escapeHtml(result.reply || 'He recibido tus datos.');
+        }
+
+        // 6. Aplicar los campos extraídos al formulario
+        applyMallBotExtractedData(result.extracted || {}, result.isComplete || false);
+
+    } catch (err) {
+        console.error('Error conversando con MallBot:', err);
+        if (loadingMsgEl) {
+            loadingMsgEl.innerHTML = `<span class="text-rose-500 font-medium">⚠️ No se pudo conectar con Amazon Nova Lite: ${escapeHtml(err.message)}</span>`;
+        }
+    } finally {
+        if (sendBtn) sendBtn.disabled = false;
+        if (input) input.focus();
+    }
+}
+
+function initMallBot() {
+    const floatingBtn = document.getElementById('mallBotFloatingBtn');
+    const closeBtn = document.getElementById('mallBotCloseBtn');
+    const clearBtn = document.getElementById('mallBotClearBtn');
+    const form = document.getElementById('mallBotForm');
+    const voiceBtn = document.getElementById('mallBotVoiceBtn');
+    const voiceStatus = document.getElementById('mallBotVoiceStatus');
+    const autoSubmitBtn = document.getElementById('mallBotAutoSubmitBtn');
+
+    if (floatingBtn) {
+        floatingBtn.addEventListener('click', () => toggleMallBot());
+    }
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => toggleMallBot(false));
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            window.mallBotHistory = [];
+            const messagesContainer = document.getElementById('mallBotMessages');
+            if (messagesContainer) {
+                messagesContainer.innerHTML = `
+                    <div class="mallbot-msg mallbot-msg-bot">
+                        <p class="font-medium">¡Conversación reiniciada! 🔄</p>
+                        <p class="mt-1 text-xs theme-text-secondary">Dime qué objeto perdiste o usa el micrófono 🎙️ para comenzar.</p>
+                    </div>
+                `;
+            }
+            updateMallBotLiveBadges(null);
+            document.getElementById('mallBotSubmitWrap')?.classList.add('hidden');
+        });
+    }
+
+    if (form) {
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            const input = document.getElementById('mallBotInput');
+            if (input && input.value.trim()) {
+                sendMallBotMessage(input.value.trim());
+            }
+        });
+    }
+
+    // Sugerencias Rápidas
+    document.querySelectorAll('.mallbot-pill').forEach(pill => {
+        pill.addEventListener('click', function() {
+            const promptText = this.dataset.quick || this.textContent.trim();
+            sendMallBotMessage(promptText);
+        });
+    });
+
+    // Guardado directo desde el bot
+    if (autoSubmitBtn) {
+        autoSubmitBtn.addEventListener('click', () => {
+            const itemForm = document.getElementById('itemForm');
+            if (itemForm) {
+                toggleMallBot(false);
+                itemForm.scrollIntoView({ behavior: 'smooth' });
+                const submitBtn = document.getElementById('submitBtn');
+                if (submitBtn) submitBtn.click();
+            }
+        });
+    }
+
+    // 🎙️ Configuración de Web Speech API (Voz a Texto nativa y gratuita)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-PE';
+        recognition.continuous = false;
+        recognition.interimResults = true;
+
+        recognition.onstart = function() {
+            window.mallBotIsListening = true;
+            if (voiceBtn) voiceBtn.classList.add('mallbot-voice-pulse');
+            if (voiceStatus) voiceStatus.classList.remove('hidden');
+        };
+
+        recognition.onresult = function(event) {
+            let interimTranscript = '';
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+            const input = document.getElementById('mallBotInput');
+            if (input) {
+                input.value = finalTranscript || interimTranscript;
+            }
+        };
+
+        recognition.onerror = function(event) {
+            console.warn('Speech recognition error:', event.error);
+            window.mallBotIsListening = false;
+            if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
+            if (voiceStatus) voiceStatus.classList.add('hidden');
+        };
+
+        recognition.onend = function() {
+            window.mallBotIsListening = false;
+            if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
+            if (voiceStatus) voiceStatus.classList.add('hidden');
+
+            const input = document.getElementById('mallBotInput');
+            if (input && input.value.trim()) {
+                sendMallBotMessage(input.value.trim());
+            }
+        };
+
+        window.mallBotRecognition = recognition;
+
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                if (window.mallBotIsListening) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error('Error iniciando micrófono:', e);
+                    }
+                }
+            });
+        }
+    } else {
+        if (voiceBtn) {
+            voiceBtn.title = 'Reconocimiento de voz no soportado en este navegador.';
+            voiceBtn.classList.add('opacity-40');
+            voiceBtn.addEventListener('click', () => {
+                alert('El reconocimiento de voz por Web Speech API no está soportado en este navegador. Puedes escribir en el cuadro de texto.');
+            });
+        }
+    }
 }
 
 // ============================================================================
@@ -1859,6 +2230,9 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshBtn.addEventListener('click', () => loadData());
     }
 
-    // 11. Restaurar sesión activa de Cognito si la página fue recargada
+    // 11. Inicializar Asistente Virtual MallBot
+    initMallBot();
+
+    // 12. Restaurar sesión activa de Cognito si la página fue recargada
     checkActiveSession();
 });

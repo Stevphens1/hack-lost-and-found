@@ -307,3 +307,118 @@ body.dark-theme .lf-ai-heading { color:#c4b5fd; }
 body.dark-theme .lf-ai-info { border-color:#475569; }
 @media(max-width:480px) { .lf-photo-small { min-height:115px; } .lf-photo-small img { height:130px; padding:4px; } .lf-photo-label { font-size:10px; padding:6px; } .lf-photo-tile { min-height:180px; } }
 @media(prefers-reduced-motion:reduce) { .lf-photo-tile img,.lf-ai-spinner { animation:none; transition:none; } }
+
+/* ============================================================
+   MallBot AI Assistant & Voice Interface (Amazon Nova Lite)
+   ============================================================ */
+.mallbot-btn-float {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 45;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    border-radius: 9999px;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.4), 0 0 15px rgba(56, 189, 248, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mallbot-btn-float:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 15px 30px -5px rgba(2, 132, 199, 0.5), 0 0 20px rgba(56, 189, 248, 0.4);
+}
+
+.mallbot-btn-float:active {
+    transform: scale(0.97);
+}
+
+.mallbot-panel {
+    position: fixed;
+    bottom: 90px;
+    right: 24px;
+    width: min(92vw, 420px);
+    height: min(80vh, 600px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    border-radius: 28px;
+    overflow: hidden;
+    backdrop-filter: blur(16px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mallbot-panel.hidden {
+    display: none !important;
+}
+
+.mallbot-msg {
+    max-width: 82%;
+    padding: 12px 16px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    word-break: break-word;
+    animation: mallbot-fade-in 0.25s ease-out;
+}
+
+@keyframes mallbot-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.mallbot-msg-bot {
+    align-self: flex-start;
+    background: #f1f5f9;
+    color: #0f172a;
+    border-bottom-left-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+body.dark-theme .mallbot-msg-bot {
+    background: #1e293b;
+    color: #f1f5f9;
+    border-color: #334155;
+}
+
+.mallbot-msg-user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+}
+
+.mallbot-voice-pulse {
+    animation: voice-glow 1.2s infinite alternate ease-in-out;
+    background-color: #ef4444 !important;
+    color: #ffffff !important;
+}
+
+@keyframes voice-glow {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); transform: scale(1); }
+    100% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); transform: scale(1.1); }
+}
+
+/* Form Auto-Fill Highlight Animation */
+.field-autofilled {
+    animation: autofill-glow 1.8s ease-out;
+}
+
+@keyframes autofill-glow {
+    0% {
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.35) !important;
+        background-color: rgba(56, 189, 248, 0.1) !important;
+    }
+    100% {
+        box-shadow: none;
+    }
+}
