@@ -1184,17 +1184,19 @@ function applyMallBotExtractedData(extracted, isComplete) {
     if (!extracted || typeof extracted !== 'object') return;
 
     // 1. Título
-    if (extracted.title) {
+    if (extracted.title && String(extracted.title).trim() !== '' && String(extracted.title).toLowerCase() !== 'null') {
         const titleInput = document.getElementById('title');
-        if (titleInput && (!titleInput.value || titleInput.value.length < 3)) {
+        if (titleInput) {
             titleInput.value = extracted.title;
+            titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+            titleInput.dispatchEvent(new Event('change', { bubbles: true }));
             titleInput.classList.add('field-autofilled');
             setTimeout(() => titleInput.classList.remove('field-autofilled'), 2000);
         }
     }
 
     // 2. Categoría
-    if (extracted.category) {
+    if (extracted.category && String(extracted.category).trim() !== '' && String(extracted.category).toLowerCase() !== 'null') {
         const categorySelect = document.getElementById('category');
         const categoryOtherContainer = document.getElementById('categoryOtherContainer');
         const categoryOtherInput = document.getElementById('categoryOtherInput');
@@ -1204,7 +1206,7 @@ function applyMallBotExtractedData(extracted, isComplete) {
             for (let i = 0; i < categorySelect.options.length; i++) {
                 const optText = categorySelect.options[i].text.toLowerCase();
                 const optVal = categorySelect.options[i].value.toLowerCase();
-                if (rawCat.includes(optVal) || optText.includes(rawCat) || rawCat.includes(optText)) {
+                if (rawCat === optVal || rawCat === optText || rawCat.includes(optVal) || optText.includes(rawCat) || rawCat.includes(optText)) {
                     categorySelect.selectedIndex = i;
                     matched = true;
                     if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
@@ -1215,14 +1217,16 @@ function applyMallBotExtractedData(extracted, isComplete) {
                 categorySelect.value = 'Otros';
                 if (categoryOtherContainer) categoryOtherContainer.classList.remove('hidden');
                 categoryOtherInput.value = extracted.category;
+                categoryOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+            categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
             categorySelect.classList.add('field-autofilled');
             setTimeout(() => categorySelect.classList.remove('field-autofilled'), 2000);
         }
     }
 
     // 3. Zona
-    if (extracted.zone) {
+    if (extracted.zone && String(extracted.zone).trim() !== '' && String(extracted.zone).toLowerCase() !== 'null') {
         const zoneSelect = document.getElementById('zone');
         const zoneOtherContainer = document.getElementById('zoneOtherContainer');
         const zoneOtherInput = document.getElementById('zoneOtherInput');
@@ -1232,7 +1236,7 @@ function applyMallBotExtractedData(extracted, isComplete) {
             for (let i = 0; i < zoneSelect.options.length; i++) {
                 const optText = zoneSelect.options[i].text.toLowerCase();
                 const optVal = zoneSelect.options[i].value.toLowerCase();
-                if (rawZone.includes(optVal) || optText.includes(rawZone) || rawZone.includes(optText)) {
+                if (rawZone === optVal || rawZone === optText || rawZone.includes(optVal) || optText.includes(rawZone) || rawZone.includes(optText)) {
                     zoneSelect.selectedIndex = i;
                     matched = true;
                     if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
@@ -1243,27 +1247,33 @@ function applyMallBotExtractedData(extracted, isComplete) {
                 zoneSelect.value = 'Otra Zona...';
                 if (zoneOtherContainer) zoneOtherContainer.classList.remove('hidden');
                 zoneOtherInput.value = extracted.zone;
+                zoneOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
+            zoneSelect.dispatchEvent(new Event('change', { bubbles: true }));
             zoneSelect.classList.add('field-autofilled');
             setTimeout(() => zoneSelect.classList.remove('field-autofilled'), 2000);
         }
     }
 
     // 4. Fecha
-    if (extracted.date) {
+    if (extracted.date && String(extracted.date).trim() !== '' && String(extracted.date).toLowerCase() !== 'null') {
         const dateInput = document.getElementById('itemDate');
         if (dateInput) {
             dateInput.value = extracted.date;
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
             dateInput.classList.add('field-autofilled');
             setTimeout(() => dateInput.classList.remove('field-autofilled'), 2000);
         }
     }
 
     // 5. Descripción
-    if (extracted.description) {
+    if (extracted.description && String(extracted.description).trim() !== '' && String(extracted.description).toLowerCase() !== 'null') {
         const descInput = document.getElementById('description');
-        if (descInput && (!descInput.value || descInput.value.length < 5)) {
+        if (descInput) {
             descInput.value = extracted.description;
+            descInput.dispatchEvent(new Event('input', { bubbles: true }));
+            descInput.dispatchEvent(new Event('change', { bubbles: true }));
             descInput.classList.add('field-autofilled');
             setTimeout(() => descInput.classList.remove('field-autofilled'), 2000);
         }

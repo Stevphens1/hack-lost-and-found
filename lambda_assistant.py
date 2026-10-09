@@ -97,14 +97,29 @@ def extract_json(raw_text):
 def lambda_handler(event, context):
     current_data = {}
     try:
-        # 1. Parsear datos de entrada
-        body = json.loads(event.get('body', '{}')) if isinstance(event.get('body'), str) else event.get('body', {})
-        user_message = body.get('message', '').strip()
-        history = body.get('history', [])
-        current_data = body.get('currentData', {}) or {}
+        # 1. Parsear datos de entrada de forma universal (Proxy y Non-Proxy)
+        payload = {}
+        if isinstance(event, dict):
+            if 'body' in event and event['body'] is not None:
+                body_val = event['body']
+                if isinstance(body_val, str):
+                    try:
+                        payload = json.loads(body_val)
+                    except Exception:
+                        payload = {}
+                elif isinstance(body_val, dict):
+                    payload = body_val
+                else:
+                    payload = event
+            else:
+                payload = event
+        
+        user_message = str(payload.get('message') or payload.get('user_message') or '').strip()
+        history = payload.get('history') or []
+        current_data = payload.get('currentData') or payload.get('current_data') or {}
 
         if not user_message:
-            user_message = "Hola, necesito reportar un objeto perdido."
+            user_message = "Hola"
 
         # 2. Reconstruir historial para Bedrock Converse API
         messages = []
