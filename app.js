@@ -1205,7 +1205,8 @@ function applyMallBotExtractedData(extracted, isComplete) {
         const categoryOtherContainer = document.getElementById('categoryOtherContainer');
         const categoryOtherInput = document.getElementById('categoryOtherInput');
         if (categorySelect) {
-            const rawCat = String(extracted.category).toLowerCase().trim();
+            const rawCat = String(extracted.category).trim();
+            const rawCatLower = rawCat.toLowerCase();
             let matchedIndex = -1;
 
             for (let i = 0; i < categorySelect.options.length; i++) {
@@ -1215,44 +1216,51 @@ function applyMallBotExtractedData(extracted, isComplete) {
                 const optTextLower = categorySelect.options[i].text.toLowerCase();
                 const optValLower = optVal.toLowerCase();
 
-                if (rawCat === optValLower || rawCat === optTextLower) {
-                    matchedIndex = i;
-                    break;
-                }
-                if (optValLower !== 'otros' && (rawCat.includes(optValLower) || optValLower.includes(rawCat) || rawCat.includes(optTextLower) || optTextLower.includes(rawCat))) {
-                    matchedIndex = i;
-                    break;
+                // Solo comparar opciones estándar (no "Otros")
+                if (optValLower !== 'otros') {
+                    if (rawCatLower === optValLower || rawCatLower === optTextLower || rawCatLower.includes(optValLower) || optValLower.includes(rawCatLower)) {
+                        matchedIndex = i;
+                        break;
+                    }
                 }
             }
 
-            // Mapeo inteligente por palabras clave comunes si no hubo coincidencia exacta
-            if (matchedIndex === -1) {
-                if (rawCat.includes('reloj') || rawCat.includes('joya') || rawCat.includes('anillo') || rawCat.includes('collar') || rawCat.includes('pulsera')) {
+            // Mapeo inteligente por palabras clave si no hubo coincidencia estándar
+            if (matchedIndex === -1 && rawCatLower !== 'otros') {
+                if (rawCatLower.includes('reloj') || rawCatLower.includes('joya') || rawCatLower.includes('anillo') || rawCatLower.includes('collar') || rawCatLower.includes('pulsera')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Joyas'));
-                } else if (rawCat.includes('polo') || rawCat.includes('ropa') || rawCat.includes('prenda') || rawCat.includes('pantalon') || rawCat.includes('casaca') || rawCat.includes('polera')) {
+                } else if (rawCatLower.includes('polo') || rawCatLower.includes('ropa') || rawCatLower.includes('prenda') || rawCatLower.includes('pantalon') || rawCatLower.includes('casaca') || rawCatLower.includes('polera')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Prendas'));
-                } else if (rawCat.includes('celular') || rawCat.includes('telefono') || rawCat.includes('iphone') || rawCat.includes('smartphone') || rawCat.includes('tablet')) {
+                } else if (rawCatLower.includes('celular') || rawCatLower.includes('telefono') || rawCatLower.includes('iphone') || rawCatLower.includes('smartphone') || rawCatLower.includes('tablet')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Smartphones'));
-                } else if (rawCat.includes('billetera') || rawCat.includes('cartera') || rawCat.includes('tarjeta') || rawCat.includes('dni') || rawCat.includes('documento')) {
+                } else if (rawCatLower.includes('billetera') || rawCatLower.includes('cartera') || rawCatLower.includes('tarjeta') || rawCatLower.includes('dni') || rawCatLower.includes('documento')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Billeteras'));
-                } else if (rawCat.includes('mochila') || rawCat.includes('bolso') || rawCat.includes('morral') || rawCat.includes('maleta')) {
+                } else if (rawCatLower.includes('mochila') || rawCatLower.includes('bolso') || rawCatLower.includes('morral') || rawCatLower.includes('maleta')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Mochilas'));
-                } else if (rawCat.includes('laptop') || rawCat.includes('computadora') || rawCat.includes('audifono') || rawCat.includes('gadget') || rawCat.includes('cargador')) {
+                } else if (rawCatLower.includes('laptop') || rawCatLower.includes('computadora') || rawCatLower.includes('audifono') || rawCatLower.includes('gadget') || rawCatLower.includes('cargador')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Laptops'));
-                } else if (rawCat.includes('llave') || rawCat.includes('llavero')) {
+                } else if (rawCatLower.includes('llave') || rawCatLower.includes('llavero')) {
                     matchedIndex = Array.from(categorySelect.options).findIndex(o => o.value.includes('Llaves'));
                 }
             }
 
-            if (matchedIndex !== -1) {
+            if (matchedIndex !== -1 && categorySelect.options[matchedIndex].value !== 'Otros') {
                 categorySelect.selectedIndex = matchedIndex;
                 if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
-                if (categoryOtherInput) categoryOtherInput.value = '';
-            } else if (categoryOtherInput) {
+                if (categoryOtherInput) {
+                    categoryOtherInput.required = false;
+                    categoryOtherInput.value = '';
+                }
+            } else {
+                // Es "Otros" o una categoría personalizada no estándar
                 categorySelect.value = 'Otros';
                 if (categoryOtherContainer) categoryOtherContainer.classList.remove('hidden');
-                categoryOtherInput.value = extracted.category;
-                categoryOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                if (categoryOtherInput) {
+                    categoryOtherInput.required = true;
+                    const customText = (rawCatLower !== 'otros' && rawCatLower !== 'otro') ? rawCat : (extracted.title || categoryOtherInput.value || '');
+                    categoryOtherInput.value = customText;
+                    categoryOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             }
 
             categorySelect.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1267,54 +1275,61 @@ function applyMallBotExtractedData(extracted, isComplete) {
         const zoneOtherContainer = document.getElementById('zoneOtherContainer');
         const zoneOtherInput = document.getElementById('zoneOtherInput');
         if (zoneSelect) {
-            const rawZone = String(extracted.zone).toLowerCase().trim();
+            const rawZone = String(extracted.zone).trim();
+            const rawZoneLower = rawZone.toLowerCase();
             let matchedIndex = -1;
 
             for (let i = 0; i < zoneSelect.options.length; i++) {
                 const optVal = zoneSelect.options[i].value;
-                if (!optVal || optVal.trim() === '') continue; // Ignorar el placeholder vacío
+                if (!optVal || optVal.trim() === '') continue; // Ignorar placeholder
 
                 const optTextLower = zoneSelect.options[i].text.toLowerCase();
                 const optValLower = optVal.toLowerCase();
 
-                if (rawZone === optValLower || rawZone === optTextLower) {
-                    matchedIndex = i;
-                    break;
-                }
-                if (optValLower !== 'otra zona...' && (rawZone.includes(optValLower) || optValLower.includes(rawZone) || rawZone.includes(optTextLower) || optTextLower.includes(rawZone))) {
-                    matchedIndex = i;
-                    break;
+                if (optValLower !== 'otra zona...') {
+                    if (rawZoneLower === optValLower || rawZoneLower === optTextLower || rawZoneLower.includes(optValLower) || optValLower.includes(rawZoneLower)) {
+                        matchedIndex = i;
+                        break;
+                    }
                 }
             }
 
-            // Mapeo inteligente por palabras clave de zonas
-            if (matchedIndex === -1) {
-                if (rawZone.includes('comida') || rawZone.includes('patio') || rawZone.includes('restaurante') || rawZone.includes('food')) {
+            // Mapeo inteligente por palabras clave
+            if (matchedIndex === -1 && rawZoneLower !== 'otra zona...' && rawZoneLower !== 'otra zona') {
+                if (rawZoneLower.includes('comida') || rawZoneLower.includes('patio') || rawZoneLower.includes('restaurante') || rawZoneLower.includes('food')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Patio de Comidas'));
-                } else if (rawZone.includes('cine') || rawZone.includes('cinemark') || rawZone.includes('cineplanet') || rawZone.includes('pelicula')) {
+                } else if (rawZoneLower.includes('cine') || rawZoneLower.includes('cinemark') || rawZoneLower.includes('cineplanet') || rawZoneLower.includes('pelicula')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Cines'));
-                } else if (rawZone.includes('estacionamiento') || rawZone.includes('cochera') || rawZone.includes('s1') || rawZone.includes('s2') || rawZone.includes('auto')) {
+                } else if (rawZoneLower.includes('estacionamiento') || rawZoneLower.includes('cochera') || rawZoneLower.includes('s1') || rawZoneLower.includes('s2') || rawZoneLower.includes('auto')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Estacionamiento'));
-                } else if (rawZone.includes('bano') || rawZone.includes('baño') || rawZone.includes('sshh') || rawZone.includes('servicio')) {
+                } else if (rawZoneLower.includes('bano') || rawZoneLower.includes('baño') || rawZoneLower.includes('sshh') || rawZoneLower.includes('servicio')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Baños'));
-                } else if (rawZone.includes('entrada') || rawZone.includes('puerta') || rawZone.includes('ingreso') || rawZone.includes('acceso')) {
+                } else if (rawZoneLower.includes('entrada') || rawZoneLower.includes('puerta') || rawZoneLower.includes('ingreso') || rawZoneLower.includes('acceso')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Entrada Principal'));
-                } else if (rawZone.includes('departamental') || rawZone.includes('ripley') || rawZone.includes('falabella') || rawZone.includes('oechsle') || rawZone.includes('piso 2')) {
+                } else if (rawZoneLower.includes('departamental') || rawZoneLower.includes('ripley') || rawZoneLower.includes('falabella') || rawZoneLower.includes('oechsle') || rawZoneLower.includes('piso 2')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Departamentales'));
-                } else if (rawZone.includes('pasillo') || rawZone.includes('tienda') || rawZone.includes('piso 1')) {
+                } else if (rawZoneLower.includes('pasillo') || rawZoneLower.includes('tienda') || rawZoneLower.includes('piso 1')) {
                     matchedIndex = Array.from(zoneSelect.options).findIndex(o => o.value.includes('Pasillo Central'));
                 }
             }
 
-            if (matchedIndex !== -1) {
+            if (matchedIndex !== -1 && zoneSelect.options[matchedIndex].value !== 'Otra Zona...') {
                 zoneSelect.selectedIndex = matchedIndex;
                 if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
-                if (zoneOtherInput) zoneOtherInput.value = '';
-            } else if (zoneOtherInput) {
+                if (zoneOtherInput) {
+                    zoneOtherInput.required = false;
+                    zoneOtherInput.value = '';
+                }
+            } else {
+                // Es "Otra Zona..." o una ubicación personalizada
                 zoneSelect.value = 'Otra Zona...';
                 if (zoneOtherContainer) zoneOtherContainer.classList.remove('hidden');
-                zoneOtherInput.value = extracted.zone;
-                zoneOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                if (zoneOtherInput) {
+                    zoneOtherInput.required = true;
+                    const customZoneText = (!rawZoneLower.includes('otra zona')) ? rawZone : (zoneOtherInput.value || '');
+                    zoneOtherInput.value = customZoneText;
+                    zoneOtherInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
             }
 
             zoneSelect.dispatchEvent(new Event('change', { bubbles: true }));
