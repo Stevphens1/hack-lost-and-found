@@ -1158,6 +1158,8 @@ function appendMallBotMessage(sender, text, isHtml = false) {
     return msgEl;
 }
 
+window.mallBotAttachedPhoto = null;
+
 function updateMallBotLiveBadges(extracted) {
     const badgesContainer = document.getElementById('mallBotStateBadges');
     if (!badgesContainer) return;
@@ -1172,6 +1174,8 @@ function updateMallBotLiveBadges(extracted) {
     if (extracted.category) pills.push(`🏷️ ${escapeHtml(extracted.category)}`);
     if (extracted.zone) pills.push(`📍 ${escapeHtml(extracted.zone)}`);
     if (extracted.date) pills.push(`📅 ${escapeHtml(extracted.date)}`);
+    if (extracted.time) pills.push(`⏰ ${escapeHtml(extracted.time)}`);
+    if (window.mallBotAttachedPhoto) pills.push(`📷 Foto lista`);
 
     if (pills.length === 0) {
         badgesContainer.innerHTML = '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 theme-text-muted">Analizando...</span>';
@@ -1267,6 +1271,18 @@ function applyMallBotExtractedData(extracted, isComplete) {
         }
     }
 
+    // 4.1 Hora Aproximada (Opcional)
+    if (extracted.time && String(extracted.time).trim() !== '' && String(extracted.time).toLowerCase() !== 'null') {
+        const timeInput = document.getElementById('itemTime');
+        if (timeInput) {
+            timeInput.value = extracted.time;
+            timeInput.dispatchEvent(new Event('input', { bubbles: true }));
+            timeInput.dispatchEvent(new Event('change', { bubbles: true }));
+            timeInput.classList.add('field-autofilled');
+            setTimeout(() => timeInput.classList.remove('field-autofilled'), 2000);
+        }
+    }
+
     // 5. Descripción
     if (extracted.description && String(extracted.description).trim() !== '' && String(extracted.description).toLowerCase() !== 'null') {
         const descInput = document.getElementById('description');
@@ -1307,12 +1323,13 @@ async function sendMallBotMessage(userText) {
     // 2. Mostrar indicador de "MallBot está escribiendo..."
     const loadingMsgEl = appendMallBotMessage('bot', '<span class="lf-ai-spinner mr-2"></span> MallBot está pensando...', true);
 
-    // 3. Recopilar datos actuales del formulario
+    // 3. Recopilar datos actuales del formulario (incluyendo hora)
     const currentData = {
         title: document.getElementById('title')?.value?.trim() || null,
         category: document.getElementById('category')?.value || null,
         zone: document.getElementById('zone')?.value || null,
         date: document.getElementById('itemDate')?.value || null,
+        time: document.getElementById('itemTime')?.value || null,
         description: document.getElementById('description')?.value?.trim() || null
     };
 
@@ -1381,11 +1398,139 @@ async function sendMallBotMessage(userText) {
     } catch (err) {
         console.error('Error conversando con MallBot:', err);
         if (loadingMsgEl) {
-            loadingMsgEl.innerHTML = `<span class="text-rose-500 font-medium">⚠️ No se pudo conectar con el Asistente: ${escapeHtml(err.message)}</span><br><small class="text-[10px] theme-text-muted mt-1 block">Si dice "Failed to fetch", asegúrate de habilitar CORS en la ruta /chat en API Gateway.</small>`;
+            loadingMsgEl.innerHTML = `<span class="text-rose-500 font-medium">⚠️ Error: ${escapeHtml(err.message)}</span>`;
         }
     } finally {
         if (sendBtn) sendBtn.disabled = false;
         if (input) input.focus();
+    }
+}
+
+async function submitReportFromMallBot() {
+    const autoSubmitBtn = document.getElementById('mallBotAutoSubmitBtn');
+    if (!autoSubmitBtn) return;
+
+    const originalHtml = autoSubmitBtn.innerHTML;
+    autoSubmitBtn.disabled = true;
+    autoSubmitBtn.innerHTML = '<span class="lf-ai-spinner mr-1.5"></span> Registrando en AWS...';
+
+    try {
+        let imageUrl = null;
+        let photoKey = null;
+        const photoFile = window.mallBotAttachedPhoto || document.getElementById('photo')?.files?.[0];
+
+        // 1. Subida a S3 si hay imagen
+        if (photoFile) {
+            autoSubmitBtn.innerHTML = '<span class="lf-ai-spinner mr-1.5"></span> Subiendo foto a S3...';
+            const presignedRes = await apiFetch(`${API_BASE_URL}/upload-url`, {
+                method: 'POST',
+                body: JSON.stringify({ fileName: photoFile.name, fileType: photoFile.type })
+            });
+
+            const s3Res = await fetch(presignedRes.uploadUrl, {
+                method: 'PUT',
+                headers: { 'Content-Type': photoFile.type },
+                body: photoFile
+            });
+
+            if (!s3Res.ok) throw new Error('Error al subir imagen a Amazon S3.');
+            imageUrl = presignedRes.imageUrl;
+            photoKey = presignedRes.photoKey || null;
+        }
+
+        autoSubmitBtn.innerHTML = '<span class="lf-ai-spinner mr-1.5"></span> Guardando en DynamoDB...';
+
+        // 2. Resolver Categoría y Zona
+        const categorySelect = document.getElementById('category');
+        const categoryOtherInput = document.getElementById('categoryOtherInput');
+        let finalCategory = categorySelect?.value || 'Otros';
+        if (finalCategory === 'Otros' && categoryOtherInput && categoryOtherInput.value.trim()) {
+            finalCategory = categoryOtherInput.value.trim();
+        }
+
+        const zoneSelect = document.getElementById('zone');
+        const zoneOtherInput = document.getElementById('zoneOtherInput');
+        let finalZone = zoneSelect?.value || 'Otra Zona...';
+        if (finalZone === 'Otra Zona...' && zoneOtherInput && zoneOtherInput.value.trim()) {
+            finalZone = zoneOtherInput.value.trim();
+        }
+
+        const dateVal = document.getElementById('itemDate')?.value || '';
+        const timeVal = document.getElementById('itemTime')?.value || '';
+        const finalDate = (dateVal && timeVal) ? `${dateVal} ${timeVal}` : (dateVal || new Date().toISOString().split('T')[0]);
+
+        const titleVal = document.getElementById('title')?.value?.trim() || '';
+        const descVal = document.getElementById('description')?.value?.trim() || '';
+
+        if (!titleVal || !finalZone || !dateVal || !descVal) {
+            throw new Error('Aún faltan algunos campos requeridos en el formulario.');
+        }
+
+        const itemData = {
+            type: window.currentUserIsStaff ? 'FOUND' : 'LOST',
+            title: titleVal,
+            category: finalCategory,
+            zone: finalZone,
+            date: finalDate,
+            description: descVal,
+            imageUrl: imageUrl,
+            ...(photoKey ? { photoKey } : {})
+        };
+
+        const result = await apiFetch(ITEMS_URL, {
+            method: 'POST',
+            body: JSON.stringify(itemData)
+        });
+
+        const matchesCreated = Number(result.matchesCreated || 0);
+
+        // 3. Notificación hermosa dentro del Chat de MallBot
+        const successCardHtml = `
+            <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/40 text-slate-800 dark:text-slate-100 shadow-sm animate-fade-in">
+                <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
+                    <span class="text-base">🎉</span>
+                    <span>¡Reporte Registrado con Éxito!</span>
+                </div>
+                <p class="text-xs mt-2 theme-text-secondary">
+                    Tu objeto <strong>"${escapeHtml(itemData.title)}"</strong> ha sido guardado en <strong>Amazon DynamoDB</strong>.
+                </p>
+                <div class="mt-2 text-[11px] p-2 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <p>📍 <strong>Ubicación:</strong> ${escapeHtml(itemData.zone)}</p>
+                    <p>📅 <strong>Fecha/Hora:</strong> ${escapeHtml(itemData.date)}</p>
+                    <p>🏷️ <strong>Categoría:</strong> ${escapeHtml(itemData.category)}</p>
+                    ${imageUrl ? '<p class="text-sky-600 dark:text-sky-400">📷 <strong>Foto:</strong> Vinculada para análisis visual</p>' : ''}
+                </div>
+                <p class="text-[11px] text-sky-600 dark:text-sky-300 font-medium mt-2">
+                    ${matchesCreated > 0 ? `✨ Amazon Bedrock detectó <strong>${matchesCreated} coincidencia(s)</strong> en revisión.` : '🔍 El motor de IA buscará coincidencias con los hallazgos de seguridad.'}
+                </p>
+            </div>
+        `;
+        appendMallBotMessage('bot', successCardHtml, true);
+
+        // 4. Limpieza del formulario y reseteo
+        const itemForm = document.getElementById('itemForm');
+        if (itemForm) itemForm.reset();
+        document.getElementById('categoryOtherContainer')?.classList.add('hidden');
+        document.getElementById('zoneOtherContainer')?.classList.add('hidden');
+        document.getElementById('photoPreview')?.classList.add('hidden');
+        document.getElementById('photoPlaceholder')?.classList.remove('hidden');
+
+        // Limpiar foto en el bot
+        window.mallBotAttachedPhoto = null;
+        document.getElementById('mallBotPhotoBar')?.classList.add('hidden');
+        document.getElementById('mallBotSubmitWrap')?.classList.add('hidden');
+        updateMallBotLiveBadges(null);
+        window.mallBotHistory = [];
+
+        await loadData();
+
+    } catch (err) {
+        console.error('Error guardando desde MallBot:', err);
+        appendMallBotMessage('bot', `<span class="text-rose-500 font-medium">⚠️ No se pudo completar el reporte: ${escapeHtml(err.message)}</span>`, true);
+    } finally {
+        autoSubmitBtn.disabled = false;
+        autoSubmitBtn.innerHTML = originalHtml;
+        if (window.lucide) lucide.createIcons();
     }
 }
 
@@ -1397,6 +1542,12 @@ function initMallBot() {
     const voiceBtn = document.getElementById('mallBotVoiceBtn');
     const voiceStatus = document.getElementById('mallBotVoiceStatus');
     const autoSubmitBtn = document.getElementById('mallBotAutoSubmitBtn');
+    const photoBtn = document.getElementById('mallBotPhotoBtn');
+    const photoInput = document.getElementById('mallBotPhotoInput');
+    const photoBar = document.getElementById('mallBotPhotoBar');
+    const photoThumb = document.getElementById('mallBotPhotoThumb');
+    const photoName = document.getElementById('mallBotPhotoName');
+    const removePhotoBtn = document.getElementById('mallBotRemovePhotoBtn');
 
     if (floatingBtn) {
         floatingBtn.addEventListener('click', () => toggleMallBot());
@@ -1406,15 +1557,86 @@ function initMallBot() {
         closeBtn.addEventListener('click', () => toggleMallBot(false));
     }
 
+    // 📷 Botón de Subir Foto dentro del Chat
+    if (photoBtn && photoInput) {
+        photoBtn.addEventListener('click', () => {
+            photoInput.click();
+        });
+
+        photoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 4 * 1024 * 1024) {
+                appendMallBotMessage('bot', '⚠️ Por favor selecciona una imagen JPG o PNG de hasta 4 MB.');
+                photoInput.value = '';
+                return;
+            }
+
+            window.mallBotAttachedPhoto = file;
+
+            // Sincronizar con el input del formulario principal
+            const mainPhotoInput = document.getElementById('photo');
+            const mainPhotoPreview = document.getElementById('photoPreview');
+            const mainPhotoPlaceholder = document.getElementById('photoPlaceholder');
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                if (photoThumb) photoThumb.src = evt.target.result;
+                if (photoName) photoName.textContent = file.name;
+                if (photoBar) photoBar.classList.remove('hidden');
+
+                if (mainPhotoPreview) {
+                    mainPhotoPreview.src = evt.target.result;
+                    mainPhotoPreview.classList.remove('hidden');
+                }
+                if (mainPhotoPlaceholder) mainPhotoPlaceholder.classList.add('hidden');
+
+                // Mensaje en chat
+                appendMallBotMessage('bot', `📷 **Fotografía adjuntada con éxito:** *${escapeHtml(file.name)}*<br><span class="text-[11px] theme-text-secondary">Lista para que Amazon Bedrock realice el contraste visual de similitud al guardar.</span>`, true);
+                
+                // Actualizar badges
+                const curData = {
+                    title: document.getElementById('title')?.value?.trim() || null,
+                    category: document.getElementById('category')?.value || null,
+                    zone: document.getElementById('zone')?.value || null,
+                    date: document.getElementById('itemDate')?.value || null,
+                    time: document.getElementById('itemTime')?.value || null
+                };
+                updateMallBotLiveBadges(curData);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (removePhotoBtn) {
+        removePhotoBtn.addEventListener('click', () => {
+            window.mallBotAttachedPhoto = null;
+            if (photoInput) photoInput.value = '';
+            if (photoBar) photoBar.classList.add('hidden');
+            const mainPhotoPreview = document.getElementById('photoPreview');
+            const mainPhotoPlaceholder = document.getElementById('photoPlaceholder');
+            if (mainPhotoPreview) {
+                mainPhotoPreview.src = '';
+                mainPhotoPreview.classList.add('hidden');
+            }
+            if (mainPhotoPlaceholder) mainPhotoPlaceholder.classList.remove('hidden');
+            appendMallBotMessage('bot', '🗑️ Fotografía retirada del reporte.');
+        });
+    }
+
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
             window.mallBotHistory = [];
+            window.mallBotAttachedPhoto = null;
+            if (photoInput) photoInput.value = '';
+            if (photoBar) photoBar.classList.add('hidden');
             const messagesContainer = document.getElementById('mallBotMessages');
             if (messagesContainer) {
                 messagesContainer.innerHTML = `
                     <div class="mallbot-msg mallbot-msg-bot">
                         <p class="font-medium">¡Conversación reiniciada! 🔄</p>
-                        <p class="mt-1 text-xs theme-text-secondary">Dime qué objeto perdiste o usa el micrófono 🎙️ para comenzar.</p>
+                        <p class="mt-1 text-xs theme-text-secondary">Dime qué objeto perdiste, usa el micrófono 🎙️ o adjunta una foto 📷 para comenzar.</p>
                     </div>
                 `;
             }
@@ -1441,16 +1663,10 @@ function initMallBot() {
         });
     });
 
-    // Guardado directo desde el bot
+    // Guardado directo y hermoso desde el bot
     if (autoSubmitBtn) {
         autoSubmitBtn.addEventListener('click', () => {
-            const itemForm = document.getElementById('itemForm');
-            if (itemForm) {
-                toggleMallBot(false);
-                itemForm.scrollIntoView({ behavior: 'smooth' });
-                const submitBtn = document.getElementById('submitBtn');
-                if (submitBtn) submitBtn.click();
-            }
+            submitReportFromMallBot();
         });
     }
 

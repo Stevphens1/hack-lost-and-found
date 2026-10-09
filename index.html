@@ -757,16 +757,28 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label for="itemDate" class="block text-xs font-semibold theme-text-secondary mb-1">
-                                    Fecha del Evento *
-                                </label>
-                                <input
-                                    type="date"
-                                    id="itemDate"
-                                    required
-                                    class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
-                                >
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label for="itemDate" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                        Fecha del Evento *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        id="itemDate"
+                                        required
+                                        class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                    >
+                                </div>
+                                <div>
+                                    <label for="itemTime" class="block text-xs font-semibold theme-text-secondary mb-1">
+                                        Hora Aproximada (Opcional)
+                                    </label>
+                                    <input
+                                        type="time"
+                                        id="itemTime"
+                                        class="theme-input w-full px-4 py-2.5 rounded-2xl text-xs sm:text-sm outline-none transition-all"
+                                    >
+                                </div>
                             </div>
 
                             <div>
@@ -978,21 +990,54 @@
             </div>
         </div>
 
-        <!-- Contenedor de Botón de Envío Rápido cuando esté completo -->
-        <div id="mallBotSubmitWrap" class="hidden px-4 py-2 bg-emerald-500/10 border-t border-emerald-500/30 flex items-center justify-between">
-            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓ ¡Datos listos!</span>
+        <!-- Barra de Vista Previa de Foto Adjunta en Chat -->
+        <div id="mallBotPhotoBar" class="hidden px-4 py-2 bg-sky-50 dark:bg-slate-800/80 border-t border-sky-200 dark:border-slate-700 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 overflow-hidden">
+                <img id="mallBotPhotoThumb" class="w-10 h-10 object-cover rounded-lg border border-sky-300 dark:border-slate-600 shrink-0" alt="Foto adjunta">
+                <div class="truncate">
+                    <p id="mallBotPhotoName" class="text-xs font-semibold theme-text-primary truncate">foto.jpg</p>
+                    <p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">📷 Lista para análisis Bedrock</p>
+                </div>
+            </div>
             <button
-                id="mallBotAutoSubmitBtn"
+                id="mallBotRemovePhotoBtn"
                 type="button"
-                class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-full shadow-sm transition-all cursor-pointer flex items-center gap-1"
+                title="Quitar foto"
+                class="p-1 rounded-full text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
             >
-                <span>🚀 Guardar Reporte</span>
+                <i data-lucide="x" class="w-4 h-4"></i>
             </button>
         </div>
 
-        <!-- Input y Acciones de Voz / Dictado (Alto Contraste) -->
+        <!-- Contenedor de Botón de Envío Rápido cuando esté completo -->
+        <div id="mallBotSubmitWrap" class="hidden px-4 py-2.5 bg-emerald-500/10 border-t border-emerald-500/30 flex items-center justify-between">
+            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">✓ ¡Reporte completo!</span>
+            <button
+                id="mallBotAutoSubmitBtn"
+                type="button"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-full shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+            >
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Guardar Reporte Ahora</span>
+            </button>
+        </div>
+
+        <!-- Input y Acciones de Voz / Dictado / Foto (Alto Contraste) -->
         <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <form id="mallBotForm" class="flex items-center gap-2" autocomplete="off">
+                <!-- Input de archivo oculto para el bot -->
+                <input type="file" id="mallBotPhotoInput" accept="image/jpeg,image/png" class="hidden">
+
+                <!-- Botón Subir Foto -->
+                <button
+                    id="mallBotPhotoBtn"
+                    type="button"
+                    title="Adjuntar fotografía (Análisis visual con Amazon Bedrock)"
+                    class="p-2.5 sm:p-3 rounded-2xl bg-slate-100 hover:bg-sky-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 hover:text-sky-600 font-bold transition-all shrink-0 cursor-pointer shadow-sm border border-slate-300 dark:border-slate-600 flex items-center justify-center"
+                >
+                    <i data-lucide="camera" class="w-5 h-5"></i>
+                </button>
+
                 <!-- Botón de Micrófono (Alto Contraste) -->
                 <button
                     id="mallBotVoiceBtn"
@@ -1026,7 +1071,6 @@
                 <span>🎙️ Escuchando... Habla ahora hacia tu micrófono</span>
             </p>
         </div>
-    </div>
     </div>
 
     <!-- Visor de Fotografías a Pantalla Completa -->
