@@ -1297,10 +1297,17 @@ function applyMallBotExtractedData(extracted, isComplete) {
 
     updateMallBotLiveBadges(extracted);
 
-    // Si todos los datos están listos, mostrar botón de envío en el chat
+    // Si el usuario ya adjuntó foto o la IA marcó completitud, mostrar botón de guardado
     const submitWrap = document.getElementById('mallBotSubmitWrap');
     if (submitWrap) {
-        if (isComplete) {
+        const titleVal = document.getElementById('title')?.value?.trim();
+        const catVal = document.getElementById('category')?.value;
+        const zoneVal = document.getElementById('zone')?.value;
+        const dateVal = document.getElementById('itemDate')?.value;
+        const descVal = document.getElementById('description')?.value?.trim();
+        const hasAllFields = Boolean(titleVal && catVal && zoneVal && dateVal && descVal);
+
+        if (hasAllFields && (isComplete || window.mallBotAttachedPhoto)) {
             submitWrap.classList.remove('hidden');
         } else {
             submitWrap.classList.add('hidden');
@@ -1320,14 +1327,16 @@ async function sendMallBotMessage(userText) {
     // 1. Mostrar mensaje del usuario en el chat
     appendMallBotMessage('user', text);
 
-    // 2. Mostrar indicador de "MallBot está escribiendo..."
+    // 2. Mostrar indicador de "MallBot está pensando..."
     const loadingMsgEl = appendMallBotMessage('bot', '<span class="lf-ai-spinner mr-2"></span> MallBot está pensando...', true);
 
-    // 3. Recopilar datos actuales del formulario (incluyendo hora)
+    // 3. Recopilar datos actuales del formulario (solo valores no vacíos)
+    const categoryEl = document.getElementById('category');
+    const zoneEl = document.getElementById('zone');
     const currentData = {
         title: document.getElementById('title')?.value?.trim() || null,
-        category: document.getElementById('category')?.value || null,
-        zone: document.getElementById('zone')?.value || null,
+        category: (categoryEl && categoryEl.value && categoryEl.value !== '') ? categoryEl.value : null,
+        zone: (zoneEl && zoneEl.value && zoneEl.value !== '') ? zoneEl.value : null,
         date: document.getElementById('itemDate')?.value || null,
         time: document.getElementById('itemTime')?.value || null,
         description: document.getElementById('description')?.value?.trim() || null
@@ -1389,11 +1398,48 @@ async function sendMallBotMessage(userText) {
 
         // 5. Reemplazar indicador de carga por la respuesta
         if (loadingMsgEl) {
-            loadingMsgEl.innerHTML = escapeHtml(result.reply || 'He recibido tus datos.');
+            let replyHtml = escapeHtml(result.reply || 'He recibido tus datos.');
+
+            // Si el bot está preguntando por la foto o tiene awaitingPhotoChoice
+            const isPhotoQuestion = result.awaitingPhotoChoice || (result.reply && (result.reply.includes('foto') || result.reply.includes('fotografía')));
+            if (isPhotoQuestion && !window.mallBotAttachedPhoto) {
+                replyHtml += `
+                    <div class="flex flex-wrap items-center gap-2 mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                        <button type="button" class="mallbot-quick-photo-yes px-3 py-1.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-bold shadow-sm transition-all cursor-pointer flex items-center gap-1.5">
+                            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                            <span>Sí, subir foto</span>
+                        </button>
+                        <button type="button" class="mallbot-quick-photo-no px-3 py-1.5 rounded-full bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1.5">
+                            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                            <span>No tengo foto, continuar</span>
+                        </button>
+                    </div>
+                `;
+            }
+
+            loadingMsgEl.innerHTML = replyHtml;
+
+            // Escuchar clics en los botones de selección rápida de foto
+            const yesBtn = loadingMsgEl.querySelector('.mallbot-quick-photo-yes');
+            if (yesBtn) {
+                yesBtn.addEventListener('click', () => {
+                    const photoInput = document.getElementById('mallBotPhotoInput');
+                    if (photoInput) photoInput.click();
+                });
+            }
+
+            const noBtn = loadingMsgEl.querySelector('.mallbot-quick-photo-no');
+            if (noBtn) {
+                noBtn.addEventListener('click', () => {
+                    sendMallBotMessage('No tengo foto');
+                });
+            }
         }
 
         // 6. Aplicar los campos extraídos al formulario
         applyMallBotExtractedData(result.extracted || {}, result.isComplete || false);
+
+        if (window.lucide) lucide.createIcons();
 
     } catch (err) {
         console.error('Error conversando con MallBot:', err);
@@ -1419,23 +1465,44 @@ async function submitReportFromMallBot() {
         let photoKey = null;
         const photoFile = window.mallBotAttachedPhoto || document.getElementById('photo')?.files?.[0];
 
-        // 1. Subida a S3 si hay imagen
+        // 1. Subida a S3 si hay imagen adjunta
         if (photoFile) {
             autoSubmitBtn.innerHTML = '<span class="lf-ai-spinner mr-1.5"></span> Subiendo foto a S3...';
-            const presignedRes = await apiFetch(`${API_BASE_URL}/upload-url`, {
-                method: 'POST',
-                body: JSON.stringify({ fileName: photoFile.name, fileType: photoFile.type })
-            });
+            try {
+                const fileMime = photoFile.type || 'image/jpeg';
+                const presignedRes = await apiFetch(`${API_BASE_URL}/upload-url`, {
+                    method: 'POST',
+                    body: JSON.stringify({ fileName: photoFile.name, fileType: fileMime })
+                });
 
-            const s3Res = await fetch(presignedRes.uploadUrl, {
-                method: 'PUT',
-                headers: { 'Content-Type': photoFile.type },
-                body: photoFile
-            });
+                // Manejo de respuesta unificada (directa o encapsulada en body)
+                let uploadData = presignedRes;
+                if (typeof presignedRes.body === 'string') {
+                    try { uploadData = JSON.parse(presignedRes.body); } catch (e) {}
+                } else if (presignedRes.body && typeof presignedRes.body === 'object') {
+                    uploadData = presignedRes.body;
+                }
 
-            if (!s3Res.ok) throw new Error('Error al subir imagen a Amazon S3.');
-            imageUrl = presignedRes.imageUrl;
-            photoKey = presignedRes.photoKey || null;
+                const uploadUrl = uploadData.uploadUrl || presignedRes.uploadUrl;
+                imageUrl = uploadData.imageUrl || presignedRes.imageUrl;
+                photoKey = uploadData.photoKey || presignedRes.photoKey || null;
+
+                if (uploadUrl) {
+                    const s3Res = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': fileMime },
+                        body: photoFile
+                    });
+
+                    if (!s3Res.ok) {
+                        console.warn('S3 upload HTTP code:', s3Res.status);
+                        throw new Error(`Fallo en Amazon S3 (Código ${s3Res.status})`);
+                    }
+                }
+            } catch (s3Err) {
+                console.error('Error subiendo foto:', s3Err);
+                throw new Error(`No se pudo subir la fotografía a S3: ${s3Err.message}`);
+            }
         }
 
         autoSubmitBtn.innerHTML = '<span class="lf-ai-spinner mr-1.5"></span> Guardando en DynamoDB...';
@@ -1567,8 +1634,9 @@ function initMallBot() {
             const file = e.target.files[0];
             if (!file) return;
 
-            if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 4 * 1024 * 1024) {
-                appendMallBotMessage('bot', '⚠️ Por favor selecciona una imagen JPG o PNG de hasta 4 MB.');
+            const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+            if (!isImage || file.size > 5 * 1024 * 1024) {
+                appendMallBotMessage('bot', '⚠️ Por favor selecciona una imagen (JPG, PNG o WEBP) de hasta 5 MB.');
                 photoInput.value = '';
                 return;
             }
@@ -1576,7 +1644,6 @@ function initMallBot() {
             window.mallBotAttachedPhoto = file;
 
             // Sincronizar con el input del formulario principal
-            const mainPhotoInput = document.getElementById('photo');
             const mainPhotoPreview = document.getElementById('photoPreview');
             const mainPhotoPlaceholder = document.getElementById('photoPlaceholder');
 
@@ -1593,7 +1660,7 @@ function initMallBot() {
                 if (mainPhotoPlaceholder) mainPhotoPlaceholder.classList.add('hidden');
 
                 // Mensaje en chat
-                appendMallBotMessage('bot', `📷 **Fotografía adjuntada con éxito:** *${escapeHtml(file.name)}*<br><span class="text-[11px] theme-text-secondary">Lista para que Amazon Bedrock realice el contraste visual de similitud al guardar.</span>`, true);
+                appendMallBotMessage('bot', `📷 **Fotografía adjuntada:** *${escapeHtml(file.name)}*<br><span class="text-[11px] theme-text-secondary">Lista para que Amazon Bedrock realice el análisis de similitud visual.</span>`, true);
                 
                 // Actualizar badges
                 const curData = {
@@ -1604,6 +1671,16 @@ function initMallBot() {
                     time: document.getElementById('itemTime')?.value || null
                 };
                 updateMallBotLiveBadges(curData);
+
+                // Si los datos requeridos están listos, mostrar botón Guardar Reporte Ahora
+                const titleVal = document.getElementById('title')?.value?.trim();
+                const catVal = document.getElementById('category')?.value;
+                const zoneVal = document.getElementById('zone')?.value;
+                const dateVal = document.getElementById('itemDate')?.value;
+                const descVal = document.getElementById('description')?.value?.trim();
+                if (titleVal && catVal && zoneVal && dateVal && descVal) {
+                    document.getElementById('mallBotSubmitWrap')?.classList.remove('hidden');
+                }
             };
             reader.readAsDataURL(file);
         });
