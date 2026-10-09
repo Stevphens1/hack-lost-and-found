@@ -925,7 +925,7 @@
                         MallBot IA
                         <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-semibold">● En línea</span>
                     </h4>
-                    <p class="text-[11px] theme-text-muted">Amazon Bedrock (Nova Lite) · Voz & Texto</p>
+                    <p class="text-[11px] theme-text-muted">Asistente de Objetos Perdidos</p>
                 </div>
             </div>
             <div class="flex items-center gap-1">
@@ -990,25 +990,25 @@
             </button>
         </div>
 
-        <!-- Input y Acciones de Voz / Adjuntos -->
-        <div class="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60">
+        <!-- Input y Acciones de Voz / Dictado (Alto Contraste) -->
+        <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <form id="mallBotForm" class="flex items-center gap-2" autocomplete="off">
-                <!-- Botón de Micrófono (Web Speech API) -->
+                <!-- Botón de Micrófono (Alto Contraste) -->
                 <button
                     id="mallBotVoiceBtn"
                     type="button"
-                    title="Hablar por micrófono (Dictado de voz)"
-                    class="p-2.5 rounded-full bg-slate-200 dark:bg-slate-800 theme-text-secondary hover:text-sky-500 transition-all shrink-0 cursor-pointer"
+                    title="Dictar por voz (Clic para hablar)"
+                    class="p-2.5 sm:p-3 rounded-2xl bg-sky-100 hover:bg-sky-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-sky-600 dark:text-sky-400 font-bold transition-all shrink-0 cursor-pointer shadow-sm border border-sky-300 dark:border-slate-600 flex items-center justify-center"
                 >
-                    <i data-lucide="mic" class="w-4 h-4"></i>
+                    <i data-lucide="mic" class="w-5 h-5"></i>
                 </button>
 
-                <!-- Input de Texto -->
+                <!-- Input de Texto de Alto Contraste -->
                 <input
                     type="text"
                     id="mallBotInput"
                     placeholder="Escribe o dicta tu mensaje..."
-                    class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm theme-text-primary focus:outline-none focus:border-sky-500 transition-all"
+                    class="flex-1 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-400 border-2 border-slate-300 dark:border-slate-600 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-medium focus:outline-none focus:border-sky-500 focus:bg-white dark:focus:bg-slate-800 transition-all shadow-inner"
                 >
 
                 <!-- Botón Enviar -->
@@ -1016,15 +1016,17 @@
                     id="mallBotSendBtn"
                     type="submit"
                     title="Enviar mensaje"
-                    class="p-2.5 rounded-full bg-sky-600 hover:bg-sky-500 text-white font-bold transition-all shadow-md shadow-sky-500/20 shrink-0 cursor-pointer"
+                    class="p-2.5 sm:p-3 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-bold transition-all shadow-md shadow-sky-500/25 shrink-0 cursor-pointer flex items-center justify-center"
                 >
-                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <i data-lucide="send" class="w-5 h-5"></i>
                 </button>
             </form>
-            <p id="mallBotVoiceStatus" class="hidden text-[10px] text-red-500 font-semibold mt-1.5 text-center animate-pulse">
-                🎙️ Escuchando tu voz... Habla ahora
+            <p id="mallBotVoiceStatus" class="hidden text-xs text-rose-500 dark:text-rose-400 font-bold mt-2 text-center flex items-center justify-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <span>🎙️ Escuchando... Habla ahora hacia tu micrófono</span>
             </p>
         </div>
+    </div>
     </div>
 
     <!-- Visor de Fotografías a Pantalla Completa -->

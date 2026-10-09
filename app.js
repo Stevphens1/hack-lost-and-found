@@ -1307,14 +1307,52 @@ async function sendMallBotMessage(userText) {
     };
 
     try {
-        const result = await apiFetch(CHAT_URL, {
+        let token = null;
+        try {
+            token = getToken();
+        } catch (e) {
+            console.warn('No hay token activo:', e);
+        }
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            headers['Authorization'] = token;
+        }
+
+        const separator = CHAT_URL.includes('?') ? '&' : '?';
+        const response = await fetch(`${CHAT_URL}${separator}t=${Date.now()}`, {
             method: 'POST',
+            cache: 'no-store',
+            headers: headers,
             body: JSON.stringify({
                 message: text,
                 history: window.mallBotHistory,
                 currentData: currentData
             })
         });
+
+        const responseText = await response.text();
+        let result = {};
+        if (responseText) {
+            try {
+                result = JSON.parse(responseText);
+            } catch {
+                throw new Error('La API devolvió una respuesta no válida.');
+            }
+        }
+
+        if (!response.ok) {
+            throw new Error(result.message || `Error HTTP ${response.status}`);
+        }
+
+        // Si la Lambda devolvió un body stringificado
+        if (typeof result.body === 'string') {
+            try {
+                result = JSON.parse(result.body);
+            } catch (e) {}
+        }
 
         // 4. Actualizar historial local
         window.mallBotHistory.push({ role: 'user', text: text });
@@ -1333,7 +1371,7 @@ async function sendMallBotMessage(userText) {
     } catch (err) {
         console.error('Error conversando con MallBot:', err);
         if (loadingMsgEl) {
-            loadingMsgEl.innerHTML = `<span class="text-rose-500 font-medium">⚠️ No se pudo conectar con Amazon Nova Lite: ${escapeHtml(err.message)}</span>`;
+            loadingMsgEl.innerHTML = `<span class="text-rose-500 font-medium">⚠️ No se pudo conectar con el Asistente: ${escapeHtml(err.message)}</span><br><small class="text-[10px] theme-text-muted mt-1 block">Si dice "Failed to fetch", asegúrate de habilitar CORS en la ruta /chat en API Gateway.</small>`;
         }
     } finally {
         if (sendBtn) sendBtn.disabled = false;
@@ -1409,62 +1447,84 @@ function initMallBot() {
     // 🎙️ Configuración de Web Speech API (Voz a Texto nativa y gratuita)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'es-PE';
-        recognition.continuous = false;
-        recognition.interimResults = true;
+        let recognition = null;
+        let finalSpokenText = '';
 
-        recognition.onstart = function() {
-            window.mallBotIsListening = true;
-            if (voiceBtn) voiceBtn.classList.add('mallbot-voice-pulse');
-            if (voiceStatus) voiceStatus.classList.remove('hidden');
-        };
+        function getOrCreateRecognition() {
+            if (recognition) return recognition;
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-PE';
+            recognition.continuous = false;
+            recognition.interimResults = true;
 
-        recognition.onresult = function(event) {
-            let interimTranscript = '';
-            let finalTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                if (event.results[i].isFinal) {
-                    finalTranscript += event.results[i][0].transcript;
-                } else {
-                    interimTranscript += event.results[i][0].transcript;
+            recognition.onstart = function() {
+                window.mallBotIsListening = true;
+                finalSpokenText = '';
+                if (voiceBtn) voiceBtn.classList.add('mallbot-voice-pulse');
+                if (voiceStatus) {
+                    voiceStatus.textContent = '🎙️ Escuchando... Habla ahora hacia tu micrófono';
+                    voiceStatus.classList.remove('hidden');
                 }
-            }
-            const input = document.getElementById('mallBotInput');
-            if (input) {
-                input.value = finalTranscript || interimTranscript;
-            }
-        };
+            };
 
-        recognition.onerror = function(event) {
-            console.warn('Speech recognition error:', event.error);
-            window.mallBotIsListening = false;
-            if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
-            if (voiceStatus) voiceStatus.classList.add('hidden');
-        };
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalSpokenText += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                const input = document.getElementById('mallBotInput');
+                if (input) {
+                    input.value = finalSpokenText || interimTranscript;
+                }
+            };
 
-        recognition.onend = function() {
-            window.mallBotIsListening = false;
-            if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
-            if (voiceStatus) voiceStatus.classList.add('hidden');
+            recognition.onerror = function(event) {
+                console.warn('Speech recognition error:', event.error);
+                window.mallBotIsListening = false;
+                if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
+                if (voiceStatus) {
+                    if (event.error === 'not-allowed') {
+                        voiceStatus.textContent = '⚠️ Permiso de micrófono denegado en el navegador.';
+                        voiceStatus.classList.remove('hidden');
+                    } else {
+                        voiceStatus.classList.add('hidden');
+                    }
+                }
+            };
 
-            const input = document.getElementById('mallBotInput');
-            if (input && input.value.trim()) {
-                sendMallBotMessage(input.value.trim());
-            }
-        };
+            recognition.onend = function() {
+                window.mallBotIsListening = false;
+                if (voiceBtn) voiceBtn.classList.remove('mallbot-voice-pulse');
+                if (voiceStatus) voiceStatus.classList.add('hidden');
 
-        window.mallBotRecognition = recognition;
+                const input = document.getElementById('mallBotInput');
+                const textToSend = (finalSpokenText || input?.value || '').trim();
+                if (textToSend.length >= 2) {
+                    sendMallBotMessage(textToSend);
+                }
+            };
+
+            return recognition;
+        }
 
         if (voiceBtn) {
             voiceBtn.addEventListener('click', () => {
+                const rec = getOrCreateRecognition();
                 if (window.mallBotIsListening) {
-                    recognition.stop();
+                    try { rec.stop(); } catch (e) {}
                 } else {
                     try {
-                        recognition.start();
+                        rec.start();
                     } catch (e) {
                         console.error('Error iniciando micrófono:', e);
+                        try { rec.stop(); } catch (ex) {}
+                        setTimeout(() => {
+                            try { rec.start(); } catch (ex2) {}
+                        }, 250);
                     }
                 }
             });
