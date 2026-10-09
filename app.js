@@ -141,38 +141,100 @@ function normalizeGroups(groups) {
 function formatDate(value) {
     if (!value) return 'Fecha no indicada';
     try {
-        const date = new Date(`${value}T00:00:00`);
+        const date = new Date(String(value).includes('T') ? value : `${value}T00:00:00`);
+        if (isNaN(date.getTime())) return String(value);
         return date.toLocaleDateString('es-PE', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
         });
     } catch {
-        return value;
+        return String(value);
     }
 }
 
 function getStatusInfo(status) {
     const value = String(status || 'REGISTERED').toUpperCase();
-    const statuses = {
-        REGISTERED: {
-            label: 'Registrado',
-            css: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
-        },
-        VALIDATED: {
+    if (['VALIDATED', 'CONFIRMED', 'MATCHED', 'APROBADO', 'VALIDADO'].includes(value)) {
+        return {
             label: 'Propiedad validada',
             css: 'bg-blue-500/15 text-blue-500 border-blue-500/30 font-semibold'
-        },
-        DELIVERED: {
+        };
+    }
+    if (['DELIVERED', 'ENTREGADO', 'CLOSED', 'COMPLETED', 'RESUELTO'].includes(value)) {
+        return {
             label: 'Entregado',
             css: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-semibold'
-        },
-        CLOSED: {
-            label: 'Cerrado',
-            css: 'bg-slate-500/10 text-slate-400 border-slate-500/30'
-        }
+        };
+    }
+    return {
+        label: 'Registrado / Pendiente',
+        css: 'bg-amber-500/10 text-amber-500 border-amber-500/30'
     };
-    return statuses[value] || { label: value, css: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
+}
+
+function extractArrayFromResponse(result, defaultKey) {
+    if (!result) return [];
+    if (Array.isArray(result)) return result;
+    if (Array.isArray(result[defaultKey])) return result[defaultKey];
+    if (Array.isArray(result[defaultKey.toLowerCase()])) return result[defaultKey.toLowerCase()];
+    if (Array.isArray(result[defaultKey.charAt(0).toUpperCase() + defaultKey.slice(1)])) return result[defaultKey.charAt(0).toUpperCase() + defaultKey.slice(1)];
+    if (Array.isArray(result.Items)) return result.Items;
+    if (Array.isArray(result.items)) return result.items;
+    if (Array.isArray(result.Matches)) return result.Matches;
+    if (Array.isArray(result.matches)) return result.matches;
+    if (Array.isArray(result.data)) return result.data;
+    if (typeof result.body === 'string') {
+        try {
+            const parsed = JSON.parse(result.body);
+            return extractArrayFromResponse(parsed, defaultKey);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (typeof result.body === 'object' && result.body !== null) {
+        return extractArrayFromResponse(result.body, defaultKey);
+    }
+    return [];
+}
+
+function normalizeItem(raw) {
+    if (!raw || typeof raw !== 'object') return {};
+    return {
+        ...raw,
+        itemID: raw.itemID || raw.itemId || raw.id || raw.ID || raw.SK || raw.PK || '',
+        type: String(raw.type || raw.Type || raw.itemType || 'LOST').toUpperCase(),
+        title: raw.title || raw.Title || raw.name || raw.Name || 'Sin título',
+        category: raw.category || raw.Category || 'General',
+        zone: raw.zone || raw.Zone || raw.location || raw.Location || 'Zona no indicada',
+        date: raw.date || raw.Date || raw.eventDate || raw.EventDate || (raw.createdAt ? String(raw.createdAt).slice(0, 10) : ''),
+        description: raw.description || raw.Description || 'Sin descripción',
+        status: String(raw.status || raw.Status || 'REGISTERED').toUpperCase(),
+        imageUrl: raw.imageUrl || raw.ImageUrl || raw.photoUrl || raw.photo || raw.image || raw.s3Url || '',
+        createdAt: raw.createdAt || raw.CreatedAt || raw.timestamp || Date.now(),
+        createdBy: raw.createdBy || raw.CreatedBy || raw.userId || raw.userEmail || raw.email || raw.sub || ''
+    };
+}
+
+function normalizeMatch(raw) {
+    if (!raw || typeof raw !== 'object') return {};
+    const lostId = raw.lostItemID || raw.lostItemId || raw.lostId || raw.lost_item_id || (raw.lostItem && (raw.lostItem.itemID || raw.lostItem.itemId)) || '';
+    const foundId = raw.foundItemID || raw.foundItemId || raw.foundId || raw.found_item_id || (raw.foundItem && (raw.foundItem.itemID || raw.foundItem.itemId)) || '';
+    
+    return {
+        ...raw,
+        matchID: raw.matchID || raw.matchId || raw.id || raw.ID || '',
+        lostItemID: lostId,
+        foundItemID: foundId,
+        matchScore: Number(raw.matchScore ?? raw.score ?? raw.similarity ?? 0),
+        status: String(raw.status || raw.Status || 'POSSIBLE').toUpperCase(),
+        visualStatus: String(raw.visualStatus || raw.visual_status || raw.VisualStatus || '').toUpperCase(),
+        visualSimilarity: raw.visualSimilarity || raw.visual_similarity || raw.VisualSimilarity || '',
+        visualAnalysis: raw.visualAnalysis || raw.visual_analysis || raw.explanation || raw.VisualAnalysis || '',
+        matchedCriteria: Array.isArray(raw.matchedCriteria) ? raw.matchedCriteria : (Array.isArray(raw.criteria) ? raw.criteria : []),
+        lostItem: raw.lostItem ? normalizeItem(raw.lostItem) : null,
+        foundItem: raw.foundItem ? normalizeItem(raw.foundItem) : null
+    };
 }
 
 // ============================================================================
@@ -568,13 +630,30 @@ function renderItems() {
 
     let items = [...window.currentItems];
 
-    // Aplicar Filtros
+    // En vista de visitante (cliente), mostrar sus reportes o reportes de tipo LOST
+    if (!window.currentUserIsStaff) {
+        const userEmail = (window.currentUserData?.email || '').toLowerCase();
+        const userSub = window.currentUserData?.sub || '';
+
+        const userSpecificItems = items.filter(i => {
+            const itemCreator = String(i.createdBy || '').toLowerCase();
+            return (userEmail && itemCreator === userEmail) || (userSub && itemCreator === userSub);
+        });
+
+        if (userSpecificItems.length > 0) {
+            items = userSpecificItems;
+        } else {
+            items = items.filter(i => String(i.type || '').toUpperCase() === 'LOST');
+        }
+    }
+
+    // Aplicar Filtros con soporte para múltiples variantes de estado
     if (window.currentFilter === 'PENDING') {
-        items = items.filter(i => String(i.status || '').toUpperCase() === 'REGISTERED');
+        items = items.filter(i => ['REGISTERED', 'PENDING', 'OPEN', 'ACTIVO', 'REPORTED', 'NUEVO'].includes(String(i.status || '').toUpperCase()));
     } else if (window.currentFilter === 'VALIDATED') {
-        items = items.filter(i => String(i.status || '').toUpperCase() === 'VALIDATED');
+        items = items.filter(i => ['VALIDATED', 'CONFIRMED', 'MATCHED', 'APROBADO', 'VALIDADO'].includes(String(i.status || '').toUpperCase()));
     } else if (window.currentFilter === 'DELIVERED') {
-        items = items.filter(i => String(i.status || '').toUpperCase() === 'DELIVERED');
+        items = items.filter(i => ['DELIVERED', 'ENTREGADO', 'CLOSED', 'COMPLETED', 'RESUELTO'].includes(String(i.status || '').toUpperCase()));
     }
 
     if (items.length === 0) {
@@ -799,10 +878,22 @@ async function loadData() {
 
     try {
         const itemsResult = await apiFetch(ITEMS_URL, { method: 'GET' });
-        window.currentItems = Array.isArray(itemsResult.items) ? itemsResult.items : [];
+        const rawItems = extractArrayFromResponse(itemsResult, 'items');
+        window.currentItems = rawItems.map(normalizeItem);
 
         const matchesResult = await apiFetch(MATCHES_URL, { method: 'GET' });
-        window.currentMatches = Array.isArray(matchesResult.matches) ? matchesResult.matches : [];
+        const rawMatches = extractArrayFromResponse(matchesResult, 'matches');
+        window.currentMatches = rawMatches.map(m => {
+            const normalized = normalizeMatch(m);
+            // Si lostItem o foundItem no vinieron completos, hidratar desde currentItems
+            if (!normalized.lostItem && normalized.lostItemID) {
+                normalized.lostItem = window.currentItems.find(i => i.itemID === normalized.lostItemID) || {};
+            }
+            if (!normalized.foundItem && normalized.foundItemID) {
+                normalized.foundItem = window.currentItems.find(i => i.itemID === normalized.foundItemID) || {};
+            }
+            return normalized;
+        });
 
         renderItems();
         if (window.currentUserIsStaff) {
@@ -916,7 +1007,8 @@ function showApplication(session) {
 
     document.getElementById('navAuthPublic')?.classList.add('hidden');
     document.getElementById('navAuthLogged')?.classList.remove('hidden');
-    document.getElementById('navRegisterLink')?.classList.add('hidden');
+    // Mantener visible el enlace de registro/reporte en navbar
+    document.getElementById('navRegisterLink')?.classList.remove('hidden');
 
     // Headers & Badges
     const userEmailEl = document.getElementById('currentUserEmail');
@@ -1018,6 +1110,31 @@ function showLanding() {
 }
 
 // ============================================================================
+// 13.1. RESTAURACIÓN DE SESIÓN (PERSISTENCIA AL RECARGAR PÁGINA)
+// ============================================================================
+function checkActiveSession() {
+    try {
+        const currentUser = userPool.getCurrentUser();
+        if (currentUser) {
+            currentUser.getSession((err, session) => {
+                if (err || !session || !session.isValid()) {
+                    console.warn('Sesión no válida o expirada en Cognito:', err);
+                    showLanding();
+                } else {
+                    console.log('Sesión activa restaurada para:', currentUser.getUsername());
+                    showApplication(session);
+                }
+            });
+        } else {
+            showLanding();
+        }
+    } catch (e) {
+        console.warn('Error verificando sesión previa:', e);
+        showLanding();
+    }
+}
+
+// ============================================================================
 // 14. INICIALIZACIÓN DE FORMULARIOS Y EVENT LISTENERS
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -1055,12 +1172,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (href && href.startsWith('#')) {
                 e.preventDefault();
                 const targetId = href.substring(1);
-                const targetEl = document.getElementById(targetId);
+
+                if (targetId === 'register' && window.activeSession) {
+                    // Si ya está logueado y hace clic en Registro, llevar a Mi Portal y enfocar el formulario
+                    document.getElementById('landingView')?.classList.add('hidden');
+                    document.getElementById('appView')?.classList.remove('hidden');
+                    const itemFormEl = document.getElementById('itemForm');
+                    if (itemFormEl) {
+                        itemFormEl.scrollIntoView({ behavior: 'smooth' });
+                        document.getElementById('title')?.focus();
+                    }
+                    return;
+                }
 
                 // Permitir ver las secciones públicas del mall sin cerrar la sesión
                 document.getElementById('landingView')?.classList.remove('hidden');
                 document.getElementById('appView')?.classList.add('hidden');
 
+                const targetEl = document.getElementById(targetId);
                 if (targetEl) {
                     targetEl.scrollIntoView({ behavior: 'smooth' });
                 }
@@ -1729,4 +1858,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => loadData());
     }
+
+    // 11. Restaurar sesión activa de Cognito si la página fue recargada
+    checkActiveSession();
 });
