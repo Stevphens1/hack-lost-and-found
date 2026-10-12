@@ -14,11 +14,8 @@
     <!-- Amazon Cognito SDK -->
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
 
-    <!-- QR Code Generator -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
     <!-- Custom CSS (Separated) -->
-    <link rel="stylesheet" href="styles.css?v=20261008-3">
+    <link rel="stylesheet" href="styles.css?v=20261009-executive-2">
 </head>
 
 <body class="light-theme antialiased min-h-screen">
@@ -46,7 +43,6 @@
             <nav id="mainNavLinks" class="hidden md:flex items-center gap-8 text-sm font-medium theme-text-secondary">
                 <a href="#hero" class="nav-link-anchor hover:text-sky-600 transition-colors">Inicio</a>
                 <a href="#areas" class="nav-link-anchor hover:text-sky-600 transition-colors">Áreas del Mall</a>
-                <a href="#metrics" class="nav-link-anchor hover:text-sky-600 transition-colors">Impacto</a>
                 <a href="#register" id="navRegisterLink" class="nav-link-anchor hover:text-sky-600 transition-colors">Registro</a>
             </nav>
 
@@ -57,7 +53,7 @@
                 <button
                     id="themeToggleBtn"
                     type="button"
-                    class="p-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 theme-text-secondary hover:theme-text-primary hover:border-sky-400 transition-all shadow-sm flex items-center gap-2"
+                    class="theme-toggle-control flex items-center gap-2"
                     title="Cambiar tema"
                 >
                     <i id="themeIcon" data-lucide="moon" class="w-4 h-4 text-sky-500"></i>
@@ -90,13 +86,6 @@
                     >
                         <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
                         <span>Mi Portal</span>
-                    </button>
-                    <button
-                        type="button"
-                        id="navLogoutBtn"
-                        class="px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-                    >
-                        Salir
                     </button>
                 </div>
             </div>
@@ -228,41 +217,6 @@
             </div>
         </section>
 
-        <!-- 3. SECCIÓN DE MÉTRICAS & SOCIAL PROOF -->
-        <section id="metrics" class="py-20 px-4 sm:px-6 lg:px-8 bg-sky-500/5 border-y border-slate-200 dark:border-slate-800">
-            <div class="max-w-7xl mx-auto">
-                <div class="text-center max-w-2xl mx-auto mb-16">
-                    <span class="text-xs font-bold text-sky-600 uppercase tracking-widest">Confianza & Efectividad</span>
-                    <h2 class="text-3xl sm:text-4xl font-extrabold font-heading theme-text-primary mt-2">
-                        Impacto en cifras para nuestros visitantes
-                    </h2>
-                </div>
-
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
-                        <p class="text-3xl sm:text-5xl font-extrabold text-sky-600 font-heading">+1,250</p>
-                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Objetos Devueltos</p>
-                        <p class="text-xs theme-text-muted mt-1">Reclamados con éxito</p>
-                    </div>
-                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
-                        <p class="text-3xl sm:text-5xl font-extrabold text-emerald-600 font-heading">94%</p>
-                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tasa de Coincidencia</p>
-                        <p class="text-xs theme-text-muted mt-1">Precisión con Bedrock</p>
-                    </div>
-                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
-                        <p class="text-3xl sm:text-5xl font-extrabold text-indigo-600 font-heading">&lt; 24h</p>
-                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Tiempo de Respuesta</p>
-                        <p class="text-xs theme-text-muted mt-1">Notificación instantánea</p>
-                    </div>
-                    <div class="p-6 theme-card border rounded-3xl shadow-sm">
-                        <p class="text-3xl sm:text-5xl font-extrabold text-amber-500 font-heading">100%</p>
-                        <p class="text-xs sm:text-sm font-semibold theme-text-primary mt-2">Trazabilidad Segura</p>
-                        <p class="text-xs theme-text-muted mt-1">Validación anti-fraude</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
         <!-- 4. SECCIÓN DE REGISTRO / FORMULARIO SYNC LABS STYLE -->
         <section id="register" class="py-24 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
             <div class="text-center mb-12">
@@ -270,7 +224,7 @@
                     Crea tu cuenta de visitante
                 </h2>
                 <p class="text-sm sm:text-base theme-text-secondary mt-3 max-w-xl mx-auto">
-                    Regístrate para reportar objetos extraviados, recibir alertas de coincidencia y agendar tu recojo seguro.
+                    Regístrate para reportar objetos extraviados, recibir alertas de coincidencia y agendar tu retiro seguro.
                 </p>
             </div>
 
@@ -667,7 +621,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 
                 <!-- COLUMNA IZQUIERDA: FORMULARIO DE REPORTE -->
-                <aside class="lg:col-span-5">
+                <aside id="formColumn" class="lg:col-span-5">
                     <div class="theme-card border rounded-3xl p-6 sm:p-8 shadow-xl sticky top-24">
                         
                         <div class="mb-6">
@@ -823,11 +777,11 @@
                     </div>
                 </aside>
 
-                <!-- COLUMNA DERECHA: REPORTES & COINCIDENCIAS (MATCHES) -->
-                <section class="lg:col-span-7">
+                <!-- COLUMNA DERECHA: REPORTES, COINCIDENCIAS Y GERENCIA -->
+                <section id="contentColumn" class="lg:col-span-7 transition-all duration-300">
                     
-                    <!-- Pestañas para Staff -->
-                    <div id="staffTabs" class="hidden mb-6 flex items-center gap-2 p-1.5 rounded-full theme-card border max-w-sm">
+                    <!-- Pestañas para Staff & Gerencia -->
+                    <div id="staffTabs" class="hidden mb-6 flex flex-wrap items-center gap-2 p-1.5 rounded-full theme-card border max-w-xl">
                         <button
                             id="tabItems"
                             type="button"
@@ -843,7 +797,44 @@
                             <span>Coincidencias</span>
                             <span id="matchCountBadge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white">0</span>
                         </button>
+                        <button
+                            id="tabGerencia"
+                            type="button"
+                            class="px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <i data-lucide="line-chart" class="w-3.5 h-3.5 text-indigo-500"></i>
+                            <span>Gerencia & Métricas</span>
+                        </button>
                     </div>
+
+                    <!-- ================= NUEVO: BUSCADOR POR CÓDIGO (SOLO STAFF) ================= -->
+                    <div id="staffSearchSection" class="hidden mb-6 theme-card border border-sky-500/30 bg-sky-50 dark:bg-slate-800/50 rounded-3xl p-5 shadow-sm">
+                        <h4 class="text-sm font-bold theme-text-primary mb-3 flex items-center gap-2">
+                            <i data-lucide="scan-barcode" class="w-4 h-4 text-sky-600"></i>
+                            Entregar Objeto
+                        </h4>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <input 
+                                type="text" 
+                                id="pickupCodeInput" 
+                                placeholder="Ingresar código (Ej. LF-A8K9X2)" 
+                                class="theme-input flex-1 px-4 py-2.5 rounded-2xl text-sm outline-none transition-all uppercase font-mono"
+                            >
+                            <button 
+                                type="button" 
+                                id="searchCodeBtn" 
+                                class="btn-pill px-6 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm shadow-md cursor-pointer flex justify-center items-center gap-2"
+                            >
+                                <i data-lucide="search" class="w-4 h-4"></i> Buscar
+                            </button>
+                        </div>
+                        
+                        <!-- Contenedor donde aparecerá el resultado de la búsqueda -->
+                        <div id="searchCodeResult" class="mt-4 hidden p-4 bg-white dark:bg-slate-900 border rounded-2xl">
+                            <!-- El JS inyectará aquí el resultado -->
+                        </div>
+                    </div>
+                    <!-- ================= FIN NUEVO ================= -->
 
                     <!-- Header de Sección + Filtros de Estado con Tamaño Uniforme -->
                     <div class="mb-6 flex flex-col gap-3">
@@ -901,6 +892,237 @@
                         <div id="matchesGrid" class="py-12 text-center text-xs theme-text-muted">
                             Cargando coincidencias...
                         </div>
+                    </div>
+
+                    <!-- Vista de Gerencia & Métricas (Exclusiva Gerencia y Staff) -->
+                    <div id="gerenciaView" class="hidden space-y-6">
+                        
+                        <!-- Barra Superior de Control Gerencial -->
+                        <div class="theme-card border rounded-3xl p-5 sm:p-6 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-sky-500/5 via-indigo-500/5 to-purple-500/5">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 uppercase tracking-wider">
+                                        Executive Intelligence
+                                    </span>
+                                    <span class="text-xs theme-text-muted">● Sincronizado en tiempo real</span>
+                                </div>
+                                <h3 class="text-xl sm:text-2xl font-bold font-heading theme-text-primary mt-1">
+                                    Panel de Control Gerencial
+                                </h3>
+                                <p class="text-xs theme-text-secondary mt-0.5">
+                                    Métricas operativas, análisis de puntos calientes de pérdida y gestión de donaciones tras 30/90 días.
+                                </p>
+                            </div>
+
+                            <div class="flex flex-wrap items-center gap-2.5 self-stretch md:self-auto">
+                                <div class="flex items-center gap-1.5 bg-white dark:bg-slate-900 border rounded-2xl px-3 py-1.5 shadow-sm">
+                                    <label for="gerenciaPeriodFilter" class="text-xs font-semibold theme-text-muted">Período:</label>
+                                    <select id="gerenciaPeriodFilter" class="bg-transparent text-xs font-medium theme-text-primary cursor-pointer outline-none">
+                                        <option value="ALL">Todo el Histórico</option>
+                                        <option value="30D">Últimos 30 días</option>
+                                        <option value="7D">Últimos 7 días</option>
+                                    </select>
+                                </div>
+                                
+                                <button
+                                    id="btnExportCsv"
+                                    type="button"
+                                    class="btn-pill px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold theme-text-primary flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                                    title="Exportar base de datos consolidada a Excel / CSV"
+                                >
+                                    <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600"></i>
+                                    <span>Exportar CSV</span>
+                                </button>
+
+                                <button
+                                    id="btnOpenDonationModal"
+                                    type="button"
+                                    class="btn-pill px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-500/20 transition-all"
+                                    title="Abrir Acta de Donación para artículos no reclamados"
+                                >
+                                    <i data-lucide="file-check-2" class="w-4 h-4"></i>
+                                    <span>Acta de Donación</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 1. TARJETAS KPI (GRID DE 5 MÉTRICAS) -->
+                        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+                            <!-- KPI 1: Total Incidentes -->
+                            <div class="theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                <div class="flex items-center justify-between text-sky-600 mb-2">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Total Registros</span>
+                                    <i data-lucide="clipboard-list" class="w-4 h-4"></i>
+                                </div>
+                                <div id="kpiTotalItems" class="text-2xl font-extrabold font-heading theme-text-primary">0</div>
+                                <p id="kpiTotalSub" class="text-[10px] theme-text-muted mt-1">0 perdidos / 0 hallazgos</p>
+                            </div>
+
+                            <!-- KPI 2: Tasa de Recuperación -->
+                            <div class="theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                <div class="flex items-center justify-between text-emerald-600 mb-2">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Tasa Retorno</span>
+                                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                                </div>
+                                <div id="kpiRecoveryRate" class="text-2xl font-extrabold font-heading text-emerald-600">0%</div>
+                                <p class="text-[10px] theme-text-muted mt-1">Devueltos a propietarios</p>
+                            </div>
+
+                            <!-- KPI 3: Tiempo Promedio en Custodia -->
+                            <div class="theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                <div class="flex items-center justify-between text-indigo-600 mb-2">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Tiempo Custodia</span>
+                                    <i data-lucide="clock" class="w-4 h-4"></i>
+                                </div>
+                                <div id="kpiAvgDays" class="text-2xl font-extrabold font-heading theme-text-primary">0 d</div>
+                                <p class="text-[10px] theme-text-muted mt-1">Promedio hasta retiro</p>
+                            </div>
+
+                            <!-- KPI 4: Lote de Donación (+30 días) -->
+                            <div class="theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                <div class="flex items-center justify-between text-amber-500 mb-2">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Donables (+30d)</span>
+                                    <i data-lucide="archive" class="w-4 h-4"></i>
+                                </div>
+                                <div id="kpiDonationEligible" class="text-2xl font-extrabold font-heading text-amber-500">0</div>
+                                <p class="text-[10px] theme-text-muted mt-1">Superan 30 días en almacén</p>
+                            </div>
+
+                            <!-- KPI 5: Valor Estimado Protegido -->
+                            <div class="col-span-2 lg:col-span-1 theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                                <div class="flex items-center justify-between text-purple-600 mb-2">
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Valor Protegido</span>
+                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                </div>
+                                <div id="kpiEstimatedValue" class="text-2xl font-extrabold font-heading theme-text-primary">S/ 0</div>
+                                <p class="text-[10px] theme-text-muted mt-1">Impacto económico estimado</p>
+                            </div>
+                        </div>
+
+                        <!-- 2. ANALÍTICA DE ZONAS CALIENTES Y OPERATIVA -->
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                            
+                            <!-- Columna Izquierda (7 cols): Ranking de Puntos Calientes (Heatmap) -->
+                            <div class="lg:col-span-7 theme-card border rounded-3xl p-5 sm:p-6 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div>
+                                        <h4 class="text-sm font-bold theme-text-primary flex items-center gap-1.5 font-heading">
+                                            <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
+                                            Zonas de Mayor Extravío (Puntos Calientes)
+                                        </h4>
+                                        <p class="text-[11px] theme-text-secondary mt-0.5">
+                                            Concentración de pérdidas por sector para optimización de patrullajes de seguridad.
+                                        </p>
+                                    </div>
+                                    <span class="text-xs font-mono text-slate-400 font-semibold">% Incidentes</span>
+                                </div>
+
+                                <!-- Lista de Barras de Progreso Dinámicas -->
+                                <div id="hotspotsContainer" class="space-y-3 pt-2">
+                                    <!-- Generado por JS -->
+                                </div>
+
+                                <!-- Caja de Recomendación Preventiva para el Mall -->
+                                <div id="hotspotRecommendationBox" class="mt-4 p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-xs flex items-start gap-2.5">
+                                    <i data-lucide="lightbulb" class="w-4 h-4 text-sky-600 dark:text-sky-400 mt-0.5 shrink-0"></i>
+                                    <div class="space-y-0.5">
+                                        <strong class="text-sky-700 dark:text-sky-300">Recomendación Operativa para Seguridad:</strong>
+                                        <p id="hotspotRecommendationText" class="theme-text-secondary text-[11px] leading-relaxed">
+                                            Cargando recomendación según las estadísticas del centro comercial...
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Columna Derecha (5 cols): Inteligencia por Horarios & Categorías -->
+                            <div class="lg:col-span-5 space-y-4">
+                                
+                                <!-- Card: Horarios Pico -->
+                                <div class="theme-card border rounded-3xl p-5 shadow-sm">
+                                    <h4 class="text-sm font-bold theme-text-primary flex items-center gap-1.5 font-heading mb-2">
+                                        <i data-lucide="sun-medium" class="w-4 h-4 text-amber-500"></i>
+                                        Franjas Horarias de Mayor Incidencia
+                                    </h4>
+                                    <div id="timeDistributionContainer" class="space-y-2 pt-1 text-xs">
+                                        <!-- Generado por JS -->
+                                    </div>
+                                </div>
+
+                                <!-- Card: Top Categorías Vulnerables -->
+                                <div class="theme-card border rounded-3xl p-5 shadow-sm">
+                                    <h4 class="text-sm font-bold theme-text-primary flex items-center gap-1.5 font-heading mb-2">
+                                        <i data-lucide="tag" class="w-4 h-4 text-indigo-500"></i>
+                                        Categorías Más Extraviadas
+                                    </h4>
+                                    <div id="categoriesRankingContainer" class="space-y-2 pt-1 text-xs">
+                                        <!-- Generado por JS -->
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- 3. GESTIÓN INTELIGENTE DE CUSTODIA Y DONACIONES (+30 DÍAS) -->
+                        <div class="theme-card border rounded-3xl p-5 sm:p-6 shadow-sm">
+                            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                                <div>
+                                    <h4 class="text-sm font-bold theme-text-primary flex items-center gap-2 font-heading">
+                                        <i data-lucide="package-search" class="w-4 h-4 text-indigo-600"></i>
+                                        Gestión de Custodia & Lote de Donación (+30 y +90 días)
+                                    </h4>
+                                    <p class="text-xs theme-text-secondary mt-0.5">
+                                        Objetos en custodia que superan los plazos reglamentarios para transferencia benéfica o disposición final.
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span id="donationsCounterBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                                        0 objetos listos
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Tabla de Artículos No Reclamados -->
+                            <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                                <table class="w-full text-left text-xs">
+                                    <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 theme-text-muted uppercase text-[10px] tracking-wider font-semibold">
+                                        <tr>
+                                            <th class="p-3">Código / ID</th>
+                                            <th class="p-3">Objeto</th>
+                                            <th class="p-3">Categoría</th>
+                                            <th class="p-3">Zona de Hallazgo</th>
+                                            <th class="p-3">Ingreso Custodia</th>
+                                            <th class="p-3 text-center">Días Almacén</th>
+                                            <th class="p-3">Criterio Legal</th>
+                                            <th class="p-3 text-right">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="donationsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                                        <tr>
+                                            <td colspan="8" class="p-6 text-center theme-text-muted">
+                                                Cargando inventario de custodia...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pie Informativo de Custodia -->
+                            <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] theme-text-muted gap-2">
+                                <div class="flex items-center gap-4">
+                                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Plazo 30 a 89 días: Apto para Donación</span>
+                                    <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Plazo ≥ 90 días: Disposición / Baja definitiva</span>
+                                </div>
+                                <button
+                                    id="btnGenerateFullLotActa"
+                                    type="button"
+                                    class="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1"
+                                >
+                                    <span>Emitir Acta Oficial de Todo el Lote</span>
+                                    <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
+                        </div>
+
                     </div>
                 </section>
             </div>
@@ -976,19 +1198,6 @@
             <div class="mallbot-msg mallbot-msg-bot">
                 <p class="font-medium">¡Hola! 👋 Soy <strong>MallBot</strong>, tu asistente de objetos perdidos.</p>
                 <p class="mt-1 text-xs theme-text-secondary">Cuéntame qué objeto perdiste o usa el micrófono 🎙️ para dictarme los detalles. Yo rellenaré tu reporte automáticamente.</p>
-            </div>
-
-            <!-- Sugerencias Rápidas -->
-            <div id="mallBotQuickPills" class="flex flex-wrap gap-1.5 pt-1">
-                <button type="button" class="mallbot-pill text-[11px] px-3 py-1 rounded-full border border-sky-400/40 bg-sky-500/10 text-sky-600 dark:text-sky-300 hover:bg-sky-500/20 transition-all cursor-pointer" data-quick="Perdí mi billetera con mis documentos en el patio de comidas hoy">
-                    👛 Billetera perdida
-                </button>
-                <button type="button" class="mallbot-pill text-[11px] px-3 py-1 rounded-full border border-sky-400/40 bg-sky-500/10 text-sky-600 dark:text-sky-300 hover:bg-sky-500/20 transition-all cursor-pointer" data-quick="Olvidé mi celular en la sala de cine hace un momento">
-                    📱 Celular extraviado
-                </button>
-                <button type="button" class="mallbot-pill text-[11px] px-3 py-1 rounded-full border border-sky-400/40 bg-sky-500/10 text-sky-600 dark:text-sky-300 hover:bg-sky-500/20 transition-all cursor-pointer" data-quick="Perdí mis llaves con llavero metálico en el estacionamiento">
-                    🔑 Llaves perdidas
-                </button>
             </div>
         </div>
 
@@ -1087,7 +1296,126 @@
         </div>
     </div>
 
+    <!-- Modal: Acta Oficial de Donación (Imprimible & Auditoría Legal) -->
+    <div id="donationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+        <div id="actaPrintArea" class="theme-card border rounded-3xl w-full max-w-3xl p-6 sm:p-8 shadow-2xl relative my-8">
+            <button
+                id="closeDonationModal"
+                type="button"
+                class="absolute top-5 right-5 theme-text-muted hover:theme-text-primary p-2 text-lg cursor-pointer no-print"
+                aria-label="Cerrar modal"
+            >
+                ✕
+            </button>
+
+            <!-- Encabezado Membretado Oficial -->
+            <div class="border-b-2 border-slate-900 dark:border-slate-700 pb-4 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-widest">
+                            Centro Comercial - Dirección General de Operaciones
+                        </p>
+                        <h2 class="text-xl sm:text-2xl font-extrabold font-heading theme-text-primary mt-1">
+                            ACTA OFICIAL DE TRANSFERENCIA Y DONACIÓN BENÉFICA
+                        </h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-100 dark:bg-slate-800 theme-text-primary border">
+                            <span id="actaFolio">ACTA-DON-2026-001</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between text-xs theme-text-secondary mt-3">
+                    <p><strong>Fecha de Emisión:</strong> <span id="actaDate">--/--/----</span></p>
+                    <p><strong>Autorizado por:</strong> <span id="actaAuthorizedBy">Gerencia de Operaciones</span></p>
+                    <p><strong>Régimen:</strong> Artículos no reclamados (&gt;30 días)</p>
+                </div>
+            </div>
+
+            <!-- Cuerpo Legal del Acta -->
+            <div class="text-xs theme-text-secondary leading-relaxed space-y-3 mb-6">
+                <p>
+                    Por medio del presente documento administrativo, la <strong>Gerencia de Operaciones</strong> y la <strong>Jefatura de Seguridad y Custodia</strong> dejan constancia formal de que los bienes muebles descritos a continuación fueron hallados en las instalaciones del centro comercial y han permanecido en el almacén de custodia por un plazo superior a los <strong>30 días calendario</strong> sin que persona alguna haya acreditado su legítima propiedad ni solicitado su restitución.
+                </p>
+                <p>
+                    En aplicación del reglamento interno de custodia y las políticas de responsabilidad social empresarial, se autoriza su transferencia en calidad de <strong>donación benéfica</strong> a la institución receptora autorizada, disponiéndose su baja definitiva de los registros activos de custodia.
+                </p>
+            </div>
+
+            <!-- Tabla de Bienes a Donar -->
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 dark:bg-slate-900 border-b theme-text-muted uppercase text-[10px] font-bold">
+                        <tr>
+                            <th class="p-2.5">N°</th>
+                            <th class="p-2.5">Código Item</th>
+                            <th class="p-2.5">Descripción del Bien</th>
+                            <th class="p-2.5">Categoría</th>
+                            <th class="p-2.5">Zona de Hallazgo</th>
+                            <th class="p-2.5 text-center">Días Custodia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="actaItemsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+                        <!-- Llenado por JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Bloque de Firmas y Sellos -->
+            <div class="grid grid-cols-3 gap-4 pt-6 pb-2 text-center text-xs border-t border-dashed border-slate-300 dark:border-slate-700">
+                <div class="space-y-1">
+                    <div class="h-14 flex items-end justify-center font-serif text-slate-400 italic">
+                        [Firmado digitalmente]
+                    </div>
+                    <div class="border-t border-slate-400 pt-1">
+                        <p class="font-bold theme-text-primary text-[11px]">Gerencia de Operaciones</p>
+                        <p class="text-[10px] theme-text-muted">Aprobación y V°B°</p>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="h-14 flex items-end justify-center font-serif text-slate-400 italic">
+                        [Firmado digitalmente]
+                    </div>
+                    <div class="border-t border-slate-400 pt-1">
+                        <p class="font-bold theme-text-primary text-[11px]">Jefatura de Seguridad</p>
+                        <p class="text-[10px] theme-text-muted">Conformidad de Egreso</p>
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <div class="h-14 flex items-end justify-center font-serif text-slate-400 italic">
+                        ___________________
+                    </div>
+                    <div class="border-t border-slate-400 pt-1">
+                        <p class="font-bold theme-text-primary text-[11px]">Entidad Benéfica Receptora</p>
+                        <p class="text-[10px] theme-text-muted">Recepción y Conformidad</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="mt-6 flex items-center justify-end gap-3 pt-4 border-t no-print">
+                <button
+                    type="button"
+                    id="btnPrintActa"
+                    class="btn-pill px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md cursor-pointer flex items-center gap-2"
+                >
+                    <i data-lucide="printer" class="w-4 h-4"></i>
+                    <span>Imprimir / Guardar en PDF</span>
+                </button>
+                <button
+                    type="button"
+                    id="btnCloseDonationModalBtn"
+                    class="btn-pill px-4 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 theme-text-primary text-xs font-semibold cursor-pointer"
+                >
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Logic Script (Separated) -->
-    <script src="app.js?v=20261009-3"></script>
+    <script src="app.js?v=20261012-gerencia-1"></script>
 </body>
 </html>

@@ -29,6 +29,7 @@ const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 // ============================================================================
 window.activeSession = null;
 window.currentUserIsStaff = false;
+window.currentUserIsGerencia = false;
 window.currentUserData = null;
 window.currentItems = [];
 window.currentMatches = [];
@@ -204,6 +205,7 @@ function normalizeItem(raw) {
     return {
         ...raw,
         itemID: raw.itemID || raw.itemId || raw.id || raw.ID || raw.SK || raw.PK || '',
+        pickupCode: raw.pickupCode || raw.PickupCode || '', // <--- ¡LÍNEA NUEVA!
         type: String(raw.type || raw.Type || raw.itemType || 'LOST').toUpperCase(),
         title: raw.title || raw.Title || raw.name || raw.Name || 'Sin título',
         category: raw.category || raw.Category || 'General',
@@ -213,7 +215,7 @@ function normalizeItem(raw) {
         status: String(raw.status || raw.Status || 'REGISTERED').toUpperCase(),
         imageUrl: raw.imageUrl || raw.ImageUrl || raw.photoUrl || raw.photo || raw.image || raw.s3Url || '',
         createdAt: raw.createdAt || raw.CreatedAt || raw.timestamp || Date.now(),
-        createdBy: raw.createdBy || raw.CreatedBy || raw.userId || raw.userEmail || raw.email || raw.sub || ''
+        createdBy: raw.reportedByEmail || raw.reportedBy || raw.createdBy || raw.CreatedBy || raw.userId || raw.userEmail || raw.email || raw.sub || ''
     };
 }
 
@@ -482,10 +484,10 @@ function buildCustomerMatchHtml(item) {
                     </p>
                     <button 
                         type="button"
-                        onclick="showPickupModal('${escapeHtml(item.itemID)}', '${escapeHtml(item.title)}')"
+                        onclick="showPickupModal('${escapeHtml(item.itemID)}', '${escapeHtml(item.title)}', '${escapeHtml(item.pickupCode)}')"
                         class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-full shadow-md shadow-blue-500/20 transition-all shrink-0 cursor-pointer"
                     >
-                        Ver Cita & QR
+                        Ver código de retiro
                     </button>
                 </div>
                 <p class="text-xs theme-text-secondary mt-1">
@@ -641,11 +643,7 @@ function renderItems() {
             return (userEmail && itemCreator === userEmail) || (userSub && itemCreator === userSub);
         });
 
-        if (userSpecificItems.length > 0) {
-            items = userSpecificItems;
-        } else {
-            items = items.filter(i => String(i.type || '').toUpperCase() === 'LOST');
-        }
+        items = userSpecificItems;
     }
 
     // Aplicar Filtros con soporte para múltiples variantes de estado
@@ -900,6 +898,9 @@ async function loadData() {
         if (window.currentUserIsStaff) {
             renderStaffMatches();
         }
+        if (window.currentUserIsGerencia || !document.getElementById('gerenciaView')?.classList.contains('hidden')) {
+            renderGerenciaDashboard();
+        }
     } catch (error) {
         console.error('Error cargando datos de DynamoDB:', error);
         if (itemsGrid) {
@@ -913,9 +914,462 @@ async function loadData() {
 }
 
 // ============================================================================
-// 12. MODAL DE CITA & CÓDIGO QR 100% VISIBLE (CLIENTE & STAFF)
+// 11.5. MÓDULO DE GERENCIA & ANALÍTICA (KPIS, PUNTOS CALIENTES & DONACIONES)
 // ============================================================================
-function showPickupModal(itemId, itemTitle) {
+window.gerenciaDonationLot = [];
+
+function activateItemsTab() {
+    const tabItems = document.getElementById('tabItems');
+    const tabMatches = document.getElementById('tabMatches');
+    const tabGerencia = document.getElementById('tabGerencia');
+    const itemsView = document.getElementById('itemsView');
+    const matchesView = document.getElementById('matchesView');
+    const gerenciaView = document.getElementById('gerenciaView');
+    const formColumn = document.getElementById('formColumn');
+    const contentColumn = document.getElementById('contentColumn');
+
+    formColumn?.classList.remove('hidden');
+    if (contentColumn) {
+        contentColumn.className = 'lg:col-span-7 transition-all duration-300';
+    }
+
+    itemsView?.classList.remove('hidden');
+    matchesView?.classList.add('hidden');
+    gerenciaView?.classList.add('hidden');
+
+    if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm transition-all cursor-pointer';
+    if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
+    if (tabGerencia) tabGerencia.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
+}
+
+function activateMatchesTab() {
+    const tabItems = document.getElementById('tabItems');
+    const tabMatches = document.getElementById('tabMatches');
+    const tabGerencia = document.getElementById('tabGerencia');
+    const itemsView = document.getElementById('itemsView');
+    const matchesView = document.getElementById('matchesView');
+    const gerenciaView = document.getElementById('gerenciaView');
+    const formColumn = document.getElementById('formColumn');
+    const contentColumn = document.getElementById('contentColumn');
+
+    formColumn?.classList.remove('hidden');
+    if (contentColumn) {
+        contentColumn.className = 'lg:col-span-7 transition-all duration-300';
+    }
+
+    itemsView?.classList.add('hidden');
+    matchesView?.classList.remove('hidden');
+    gerenciaView?.classList.add('hidden');
+
+    if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all cursor-pointer';
+    if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer';
+    if (tabGerencia) tabGerencia.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
+
+    renderStaffMatches();
+}
+
+function activateGerenciaTab() {
+    const tabItems = document.getElementById('tabItems');
+    const tabMatches = document.getElementById('tabMatches');
+    const tabGerencia = document.getElementById('tabGerencia');
+    const itemsView = document.getElementById('itemsView');
+    const matchesView = document.getElementById('matchesView');
+    const gerenciaView = document.getElementById('gerenciaView');
+    const formColumn = document.getElementById('formColumn');
+    const contentColumn = document.getElementById('contentColumn');
+
+    // Modo ejecutivo full-width
+    formColumn?.classList.add('hidden');
+    if (contentColumn) {
+        contentColumn.className = 'lg:col-span-12 transition-all duration-300';
+    }
+
+    itemsView?.classList.add('hidden');
+    matchesView?.classList.add('hidden');
+    gerenciaView?.classList.remove('hidden');
+
+    if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all cursor-pointer';
+    if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
+    if (tabGerencia) tabGerencia.className = 'px-4 py-2 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer';
+
+    renderGerenciaDashboard();
+}
+
+function calculateItemDaysInCustody(item) {
+    const rawDate = item.createdAt || item.date;
+    if (!rawDate) return 0;
+    const itemDate = new Date(rawDate);
+    if (isNaN(itemDate.getTime())) return 0;
+    const diffMs = Date.now() - itemDate.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return days >= 0 ? days : 0;
+}
+
+function getCategoryEstimatedValue(category) {
+    const cat = String(category || '').toLowerCase();
+    if (cat.includes('laptop') || cat.includes('tecnología') || cat.includes('tecnologia')) return 2200;
+    if (cat.includes('smartphone') || cat.includes('tablet') || cat.includes('celular')) return 1500;
+    if (cat.includes('joya') || cat.includes('reloj')) return 450;
+    if (cat.includes('billetera') || cat.includes('documento')) return 180;
+    if (cat.includes('mochila') || cat.includes('bolso')) return 120;
+    if (cat.includes('prenda') || cat.includes('accesorio')) return 80;
+    if (cat.includes('llave')) return 40;
+    return 60;
+}
+
+function renderGerenciaDashboard() {
+    const allItems = window.currentItems || [];
+    const filterEl = document.getElementById('gerenciaPeriodFilter');
+    const period = filterEl ? filterEl.value : 'ALL';
+
+    // 1. Filtrar por período
+    let filteredItems = allItems;
+    const now = Date.now();
+    if (period === '7D') {
+        filteredItems = allItems.filter(item => {
+            const d = new Date(item.createdAt || item.date).getTime();
+            return !isNaN(d) && (now - d) <= (7 * 24 * 60 * 60 * 1000);
+        });
+    } else if (period === '30D') {
+        filteredItems = allItems.filter(item => {
+            const d = new Date(item.createdAt || item.date).getTime();
+            return !isNaN(d) && (now - d) <= (30 * 24 * 60 * 60 * 1000);
+        });
+    }
+
+    // 2. Cálculo de KPIs
+    const totalCount = filteredItems.length;
+    const lostCount = filteredItems.filter(i => i.type === 'LOST').length;
+    const foundCount = filteredItems.filter(i => i.type === 'FOUND').length;
+    
+    const deliveredItems = filteredItems.filter(i => {
+        const st = String(i.status || '').toUpperCase();
+        return ['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED', 'COMPLETED', 'RESUELTO'].includes(st);
+    });
+    const deliveredCount = deliveredItems.length;
+    
+    const recoveryRate = foundCount > 0 
+        ? Math.round((deliveredCount / foundCount) * 100) 
+        : (totalCount > 0 ? Math.round((deliveredCount / totalCount) * 100) : 0);
+
+    let totalDaysCustody = 0;
+    filteredItems.forEach(i => {
+        totalDaysCustody += calculateItemDaysInCustody(i);
+    });
+    const avgDays = totalCount > 0 ? (totalDaysCustody / totalCount).toFixed(1) : 0;
+
+    // Artículos de donación (FOUND, no entregados, >= 30 días)
+    const donationEligibleItems = allItems.filter(i => {
+        const st = String(i.status || '').toUpperCase();
+        const isNotDelivered = !['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED'].includes(st);
+        const days = calculateItemDaysInCustody(i);
+        return i.type === 'FOUND' && isNotDelivered && days >= 30;
+    });
+
+    let totalEstimatedValue = 0;
+    filteredItems.forEach(i => {
+        totalEstimatedValue += getCategoryEstimatedValue(i.category);
+    });
+
+    // Inyectar en KPIs
+    const kpiTotalEl = document.getElementById('kpiTotalItems');
+    if (kpiTotalEl) kpiTotalEl.textContent = totalCount;
+
+    const kpiTotalSubEl = document.getElementById('kpiTotalSub');
+    if (kpiTotalSubEl) kpiTotalSubEl.textContent = `${lostCount} perdidos / ${foundCount} hallazgos`;
+
+    const kpiRecoveryEl = document.getElementById('kpiRecoveryRate');
+    if (kpiRecoveryEl) kpiRecoveryEl.textContent = `${recoveryRate}%`;
+
+    const kpiAvgDaysEl = document.getElementById('kpiAvgDays');
+    if (kpiAvgDaysEl) kpiAvgDaysEl.textContent = `${avgDays} d`;
+
+    const kpiDonationEl = document.getElementById('kpiDonationEligible');
+    if (kpiDonationEl) kpiDonationEl.textContent = donationEligibleItems.length;
+
+    const kpiValueEl = document.getElementById('kpiEstimatedValue');
+    if (kpiValueEl) kpiValueEl.textContent = `S/ ${totalEstimatedValue.toLocaleString('es-PE')}`;
+
+    // 3. Puntos Calientes (Heatmap de Zonas)
+    renderHotspots(filteredItems);
+
+    // 4. Franjas Horarias & Categorías
+    renderTimeDistributionAndCategories(filteredItems);
+
+    // 5. Tabla de Donaciones (+30 días)
+    renderDonationsTable(donationEligibleItems, allItems);
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderHotspots(items) {
+    const container = document.getElementById('hotspotsContainer');
+    if (!container) return;
+
+    if (items.length === 0) {
+        container.innerHTML = '<p class="text-xs theme-text-muted py-4 text-center">No hay registros suficientes para calcular puntos calientes.</p>';
+        return;
+    }
+
+    const zoneCounts = {};
+    items.forEach(i => {
+        const zone = i.zone || 'Otra Zona...';
+        zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
+    });
+
+    const sortedZones = Object.entries(zoneCounts)
+        .map(([zone, count]) => ({ zone, count, percentage: Math.round((count / items.length) * 100) }))
+        .sort((a, b) => b.count - a.count);
+
+    container.innerHTML = sortedZones.map((item, index) => {
+        let rankClass = 'hotspot-rank-other';
+        let badgeColor = 'text-sky-600 bg-sky-500/10';
+        if (index === 0) {
+            rankClass = 'hotspot-rank-1';
+            badgeColor = 'text-rose-600 bg-rose-500/10 font-bold';
+        } else if (index === 1) {
+            rankClass = 'hotspot-rank-2';
+            badgeColor = 'text-amber-600 bg-amber-500/10 font-bold';
+        } else if (index === 2) {
+            rankClass = 'hotspot-rank-3';
+            badgeColor = 'text-amber-500 bg-amber-500/10';
+        }
+
+        return `
+            <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-medium theme-text-primary flex items-center gap-1.5">
+                        <span class="text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold ${badgeColor}">${index + 1}</span>
+                        ${escapeHtml(item.zone)}
+                    </span>
+                    <span class="font-mono text-[11px] theme-text-secondary font-semibold">
+                        ${item.count} casos (${item.percentage}%)
+                    </span>
+                </div>
+                <div class="hotspot-bar-wrapper">
+                    <div class="hotspot-bar-fill ${rankClass}" style="width: ${Math.max(item.percentage, 5)}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const topZone = sortedZones[0];
+    const recTextEl = document.getElementById('hotspotRecommendationText');
+    if (recTextEl && topZone) {
+        recTextEl.textContent = `Se detectó que el ${topZone.percentage}% de las pérdidas registradas se concentran en "${topZone.zone}". Se recomienda a la jefatura de seguridad asignar patrullaje preventivo durante horas de alta afluencia (13:00 - 16:00 hrs) y colocar avisos preventivos para visitantes en este sector.`;
+    }
+}
+
+function renderTimeDistributionAndCategories(items) {
+    const timeContainer = document.getElementById('timeDistributionContainer');
+    const catContainer = document.getElementById('categoriesRankingContainer');
+
+    let morning = 0, afternoon = 0, night = 0;
+    items.forEach(i => {
+        const timeStr = String(i.time || '').toLowerCase();
+        let hour = -1;
+        const match = timeStr.match(/(\d{1,2}):/);
+        if (match) {
+            hour = parseInt(match[1], 10);
+            if (timeStr.includes('pm') && hour < 12) hour += 12;
+            if (timeStr.includes('am') && hour === 12) hour = 0;
+        }
+        if (hour >= 6 && hour < 13) morning++;
+        else if (hour >= 13 && hour < 19) afternoon++;
+        else night++;
+    });
+
+    const total = items.length || 1;
+    if (timeContainer) {
+        timeContainer.innerHTML = `
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                <span class="theme-text-secondary flex items-center gap-1.5">☀️ Mañana (10:00 - 13:00)</span>
+                <span class="font-mono font-semibold theme-text-primary">${morning} (${Math.round((morning/total)*100)}%)</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 bg-amber-500/5 px-2 rounded-lg">
+                <span class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">🔥 Tarde / Almuerzo (13:00 - 18:00)</span>
+                <span class="font-mono font-bold text-amber-600 dark:text-amber-400">${afternoon} (${Math.round((afternoon/total)*100)}%)</span>
+            </div>
+            <div class="flex items-center justify-between py-1.5">
+                <span class="theme-text-secondary flex items-center gap-1.5">🌙 Noche / Cines (18:00 - 22:00)</span>
+                <span class="font-mono font-semibold theme-text-primary">${night} (${Math.round((night/total)*100)}%)</span>
+            </div>
+        `;
+    }
+
+    if (catContainer) {
+        const catCounts = {};
+        items.forEach(i => {
+            const cat = i.category || 'Otros';
+            catCounts[cat] = (catCounts[cat] || 0) + 1;
+        });
+        const topCats = Object.entries(catCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 4);
+
+        catContainer.innerHTML = topCats.map(([cat, cnt]) => `
+            <div class="flex items-center justify-between py-1.5 border-b last:border-0 border-slate-100 dark:border-slate-800">
+                <span class="theme-text-secondary truncate max-w-[180px]">${escapeHtml(cat)}</span>
+                <span class="font-mono font-semibold theme-text-primary">${cnt} (${Math.round((cnt/total)*100)}%)</span>
+            </div>
+        `).join('') || '<p class="text-xs theme-text-muted">Sin categorías registradas</p>';
+    }
+}
+
+function renderDonationsTable(donationEligibleItems, allItems) {
+    const tbody = document.getElementById('donationsTableBody');
+    const badge = document.getElementById('donationsCounterBadge');
+    if (badge) {
+        badge.textContent = `${donationEligibleItems.length} objetos listos`;
+    }
+
+    window.gerenciaDonationLot = donationEligibleItems;
+
+    if (!tbody) return;
+
+    if (donationEligibleItems.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" class="p-8 text-center theme-text-muted text-xs">
+                    <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 mb-2">
+                        <i data-lucide="check" class="w-5 h-5"></i>
+                    </div>
+                    <p class="font-semibold theme-text-primary">Inventario de Almacén al Día</p>
+                    <p class="text-[11px] mt-0.5">Actualmente ningún objeto en custodia supera los 30 días reglamentarios sin reclamar.</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = donationEligibleItems.map((item) => {
+        const days = calculateItemDaysInCustody(item);
+        const isCritical90 = days >= 90;
+        const legalBadge = isCritical90
+            ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">🔴 Plazo Legal (&gt;90d)</span>'
+            : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">🟡 Donación (&gt;30d)</span>';
+
+        return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
+                <td class="p-3 font-mono text-[11px] theme-text-primary font-bold">${escapeHtml(item.pickupCode || item.itemID?.slice(0, 8) || 'S/C')}</td>
+                <td class="p-3">
+                    <span class="font-bold theme-text-primary">${escapeHtml(item.title)}</span>
+                    <p class="text-[10px] theme-text-muted truncate max-w-xs">${escapeHtml(item.description)}</p>
+                </td>
+                <td class="p-3 theme-text-secondary">${escapeHtml(item.category)}</td>
+                <td class="p-3 theme-text-secondary">${escapeHtml(item.zone)}</td>
+                <td class="p-3 theme-text-muted">${formatDate(item.createdAt || item.date)}</td>
+                <td class="p-3 text-center font-mono font-bold ${isCritical90 ? 'text-rose-600' : 'text-amber-600'}">${days} d</td>
+                <td class="p-3">${legalBadge}</td>
+                <td class="p-3 text-right">
+                    <button
+                        type="button"
+                        class="btn-single-acta px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+                        data-item-id="${escapeHtml(item.itemID)}"
+                    >
+                        Ver en Acta
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.querySelectorAll('.btn-single-acta').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.itemId;
+            const single = window.gerenciaDonationLot.filter(i => i.itemID === id);
+            openDonationModal(single);
+        });
+    });
+}
+
+function openDonationModal(itemsToInclude = null) {
+    const modal = document.getElementById('donationModal');
+    if (!modal) return;
+
+    const items = itemsToInclude && itemsToInclude.length > 0 ? itemsToInclude : (window.gerenciaDonationLot || []);
+    
+    const folioEl = document.getElementById('actaFolio');
+    const dateEl = document.getElementById('actaDate');
+    const authorizedEl = document.getElementById('actaAuthorizedBy');
+
+    const now = new Date();
+    const folioNumber = `ACTA-DON-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
+    
+    if (folioEl) folioEl.textContent = folioNumber;
+    if (dateEl) dateEl.textContent = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    if (authorizedEl) authorizedEl.textContent = window.currentUserData?.email || 'Gerencia General de Operaciones';
+
+    const tbody = document.getElementById('actaItemsTableBody');
+    if (tbody) {
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-xs theme-text-muted">No hay artículos seleccionados para esta acta.</td></tr>';
+        } else {
+            tbody.innerHTML = items.map((it, idx) => `
+                <tr class="border-b border-slate-100 dark:border-slate-800">
+                    <td class="p-2.5 font-mono text-[10px]">${idx + 1}</td>
+                    <td class="p-2.5 font-mono font-bold text-[11px]">${escapeHtml(it.pickupCode || it.itemID?.slice(0, 8) || 'S/C')}</td>
+                    <td class="p-2.5 font-medium">${escapeHtml(it.title)}</td>
+                    <td class="p-2.5">${escapeHtml(it.category)}</td>
+                    <td class="p-2.5">${escapeHtml(it.zone)}</td>
+                    <td class="p-2.5 text-center font-mono font-bold">${calculateItemDaysInCustody(it)} días</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeDonationModal() {
+    document.getElementById('donationModal')?.classList.add('hidden');
+}
+
+function exportGerenciaCsv() {
+    const items = window.currentItems || [];
+    if (items.length === 0) {
+        alert('No hay datos disponibles para exportar.');
+        return;
+    }
+
+    const headers = ['ID', 'Codigo_Retiro', 'Tipo', 'Titulo', 'Categoria', 'Zona', 'Fecha', 'Hora', 'Estado', 'Dias_Custodia', 'Valor_Estimado_PEN', 'Reportado_Por'];
+
+    const rows = items.map(i => {
+        const days = calculateItemDaysInCustody(i);
+        const valuePen = getCategoryEstimatedValue(i.category);
+        return [
+            `"${(i.itemID || '').replaceAll('"', '""')}"`,
+            `"${(i.pickupCode || '').replaceAll('"', '""')}"`,
+            `"${(i.type || '').replaceAll('"', '""')}"`,
+            `"${(i.title || '').replaceAll('"', '""')}"`,
+            `"${(i.category || '').replaceAll('"', '""')}"`,
+            `"${(i.zone || '').replaceAll('"', '""')}"`,
+            `"${(i.date || '').replaceAll('"', '""')}"`,
+            `"${(i.time || '').replaceAll('"', '""')}"`,
+            `"${(i.status || '').replaceAll('"', '""')}"`,
+            days,
+            valuePen,
+            `"${(i.createdBy || '').replaceAll('"', '""')}"`
+        ].join(';');
+    });
+
+    const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `reporte_gerencial_lost_found_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// ============================================================================
+// 12. MODAL DE DETALLE & CÓDIGO DE RECOJO (CLIENTE)
+// ============================================================================
+function showPickupModal(itemId, itemTitle, pickupCode = '') {
     let modal = document.getElementById('pickupModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -924,8 +1378,7 @@ function showPickupModal(itemId, itemTitle) {
         document.body.appendChild(modal);
     }
 
-    const qrData = `LOST_FOUND_VALIDATION|ID:${itemId}|USER:${window.currentUserData?.email || 'Usuario'}|TIME:${Date.now()}`;
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrData)}&margin=1`;
+    const displayCode = pickupCode || 'EN PROCESO';
 
     modal.innerHTML = `
         <div class="theme-card border rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl relative animate-in fade-in zoom-in duration-200">
@@ -936,16 +1389,19 @@ function showPickupModal(itemId, itemTitle) {
                 <div class="w-12 h-12 bg-sky-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-sky-500/20">
                     <span class="text-2xl">🎫</span>
                 </div>
-                <h3 class="text-xl font-extrabold theme-text-primary font-heading">Pase de Recojo Seguro</h3>
+                <h3 class="text-xl font-extrabold theme-text-primary font-heading">Pase de Retiro Seguro</h3>
                 <p class="text-xs theme-text-muted mt-1">${escapeHtml(itemTitle)}</p>
             </div>
 
-            <!-- Contenedor QR Blanco con Imagen Garantizada -->
+            <!-- Contenedor del Código Alfanumérico -->
             <div class="my-6 text-center">
-                <div class="qr-container mx-auto p-3 bg-white rounded-2xl border border-slate-200 shadow-sm inline-block">
-                    <img src="${qrImageUrl}" alt="Código QR de Validación" class="w-44 h-44 mx-auto rounded-lg" />
+                <div class="mx-auto p-4 bg-sky-50 dark:bg-slate-900 border-2 border-sky-200 dark:border-sky-800 rounded-2xl shadow-sm inline-block min-w-[200px]">
+                    <p class="text-xs theme-text-muted font-bold uppercase mb-1">Tu código de retiro es:</p>
+                    <p class="text-3xl font-mono font-extrabold tracking-[4px] text-sky-700 dark:text-sky-400">
+                        ${escapeHtml(displayCode)}
+                    </p>
                 </div>
-                <p class="text-[11px] theme-text-muted mt-2.5 font-mono font-medium">Token de Verificación Anti-Fraude</p>
+                <p class="text-[11px] theme-text-muted mt-3 font-medium">Dicta este código al personal de seguridad para validar tu identidad y reclamar tu objeto.</p>
             </div>
 
             <!-- Recuadro de Instrucciones con Alto Contraste -->
@@ -955,12 +1411,8 @@ function showPickupModal(itemId, itemTitle) {
                     <span class="font-bold text-slate-900 dark:text-white">Módulo Central (Piso 1)</span>
                 </div>
                 <div class="flex items-center justify-between">
-                    <span class="text-slate-600 dark:text-slate-400 font-medium">🕒 Horario de atención:</span>
-                    <span class="font-bold text-slate-900 dark:text-white">Lun a Dom: 10:00 AM - 9:00 PM</span>
-                </div>
-                <div class="flex items-center justify-between">
                     <span class="text-slate-600 dark:text-slate-400 font-medium">📄 Requisito obligatorio:</span>
-                    <span class="font-bold text-emerald-600 dark:text-emerald-400">DNI / Documento de Identidad</span>
+                    <span class="font-bold text-emerald-600 dark:text-emerald-400">Documento de Identidad</span>
                 </div>
             </div>
 
@@ -979,6 +1431,93 @@ function closePickupModal() {
 }
 
 // ============================================================================
+// 12.9. RESET COMPLETO DEL ESTADO TEMPORAL DE MALLBOT
+// ============================================================================
+function resetMallBotSessionState({ showWelcome = true } = {}) {
+    // Memoria temporal de conversación
+    window.mallBotHistory = [];
+    window.mallBotAttachedPhoto = null;
+
+    // Detener voz si estuviera activa
+    if (window.mallBotIsListening && window.mallBotRecognition) {
+        try { window.mallBotRecognition.stop(); } catch (e) {}
+    }
+    window.mallBotIsListening = false;
+
+    // Formulario principal
+    const itemForm = document.getElementById('itemForm');
+    if (itemForm) itemForm.reset();
+
+    const itemType = document.getElementById('itemType');
+    if (itemType) itemType.value = window.currentUserIsStaff ? 'FOUND' : 'LOST';
+
+    // Campos condicionales
+    const categoryOtherContainer = document.getElementById('categoryOtherContainer');
+    const categoryOtherInput = document.getElementById('categoryOtherInput');
+    if (categoryOtherContainer) categoryOtherContainer.classList.add('hidden');
+    if (categoryOtherInput) {
+        categoryOtherInput.value = '';
+        categoryOtherInput.required = false;
+    }
+
+    const zoneOtherContainer = document.getElementById('zoneOtherContainer');
+    const zoneOtherInput = document.getElementById('zoneOtherInput');
+    if (zoneOtherContainer) zoneOtherContainer.classList.add('hidden');
+    if (zoneOtherInput) {
+        zoneOtherInput.value = '';
+        zoneOtherInput.required = false;
+    }
+
+    // Foto del formulario
+    const mainPhotoInput = document.getElementById('photo');
+    if (mainPhotoInput) mainPhotoInput.value = '';
+
+    const mainPhotoPreview = document.getElementById('photoPreview');
+    if (mainPhotoPreview) {
+        mainPhotoPreview.src = '';
+        mainPhotoPreview.classList.add('hidden');
+    }
+    document.getElementById('photoPlaceholder')?.classList.remove('hidden');
+
+    // Foto del chatbot
+    const botPhotoInput = document.getElementById('mallBotPhotoInput');
+    if (botPhotoInput) botPhotoInput.value = '';
+
+    const botPhotoThumb = document.getElementById('mallBotPhotoThumb');
+    if (botPhotoThumb) botPhotoThumb.src = '';
+
+    const botPhotoName = document.getElementById('mallBotPhotoName');
+    if (botPhotoName) botPhotoName.textContent = '';
+
+    document.getElementById('mallBotPhotoBar')?.classList.add('hidden');
+    document.getElementById('mallBotSubmitWrap')?.classList.add('hidden');
+
+    // Input del chat
+    const botInput = document.getElementById('mallBotInput');
+    if (botInput) botInput.value = '';
+
+    // Estado visual
+    if (typeof updateMallBotLiveBadges === 'function') {
+        updateMallBotLiveBadges(null);
+    }
+
+    // La conversación visible también debe desaparecer entre usuarios.
+    const messagesContainer = document.getElementById('mallBotMessages');
+    if (messagesContainer) {
+        messagesContainer.innerHTML = showWelcome
+            ? `
+                <div class="mallbot-msg mallbot-msg-bot">
+                    <p class="font-medium">¡Hola! 👋 Soy <strong>MallBot</strong>, tu asistente de objetos perdidos.</p>
+                    <p class="mt-1 text-xs theme-text-secondary">Cuéntame qué objeto perdiste o usa el micrófono 🎙️ para dictarme los detalles. Yo rellenaré tu reporte automáticamente.</p>
+                </div>
+            `
+            : '';
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// ============================================================================
 // 13. GESTIÓN DE SESIÓN & COGNITO AUTH
 // ============================================================================
 function showApplication(session) {
@@ -989,7 +1528,13 @@ function showApplication(session) {
     const rawGroups = payload['cognito:groups'] || [];
     const groups = normalizeGroups(rawGroups);
     const isStaff = groups.includes('STAFF');
-    window.currentUserIsStaff = isStaff;
+    const isGerencia = groups.includes('GERENCIA') || groups.includes('ADMIN');
+
+    window.currentUserIsStaff = isStaff || isGerencia;
+    window.currentUserIsGerencia = isGerencia;
+
+    // Cada inicio/cambio de sesión comienza con MallBot totalmente limpio.
+    resetMallBotSessionState({ showWelcome: true });
 
     // Reset de filtro a "Todos"
     window.currentFilter = 'ALL';
@@ -1020,10 +1565,19 @@ function showApplication(session) {
 
     const roleBadge = document.getElementById('roleBadge');
     if (roleBadge) {
-        roleBadge.textContent = isStaff ? 'Personal de Seguridad (Staff)' : 'Visitante Registrado';
-        roleBadge.className = isStaff
-            ? 'text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full'
-            : 'text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full';
+        if (isGerencia) {
+            roleBadge.textContent = 'Gerencia & Operaciones';
+            roleBadge.className = 'text-xs font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 px-3 py-1 rounded-full cursor-pointer flex items-center gap-1.5';
+            roleBadge.title = 'Rol: Gerencia de Operaciones (Click para ver panel gerencial)';
+        } else if (isStaff) {
+            roleBadge.textContent = 'Personal de Seguridad (Staff)';
+            roleBadge.className = 'text-xs font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full';
+            roleBadge.title = 'Rol: Personal de Seguridad';
+        } else {
+            roleBadge.textContent = 'Visitante Registrado';
+            roleBadge.className = 'text-xs font-bold bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 px-3 py-1 rounded-full';
+            roleBadge.title = 'Rol: Visitante';
+        }
     }
 
     const formTitle = document.getElementById('formTitle');
@@ -1033,19 +1587,28 @@ function showApplication(session) {
     const itemsTitle = document.getElementById('itemsTitle');
     const itemsSubtitle = document.getElementById('itemsSubtitle');
     const staffTabs = document.getElementById('staffTabs');
-    const itemsView = document.getElementById('itemsView');
-    const matchesView = document.getElementById('matchesView');
-    const tabItems = document.getElementById('tabItems');
-    const tabMatches = document.getElementById('tabMatches');
+    const staffSearchSection = document.getElementById('staffSearchSection');
 
-    if (isStaff) {
-        if (formTitle) formTitle.textContent = 'Registrar Objeto Encontrado';
-        if (formHelp) formHelp.textContent = 'El personal de seguridad registra los objetos encontrados en el mall para iniciar el matching.';
+    // Herramienta de entrega exclusiva de Staff.
+    if (staffSearchSection) {
+        staffSearchSection.classList.add('hidden');
+    }
+
+    if (isStaff || isGerencia) {
+        if (formTitle) formTitle.textContent = isGerencia ? 'Gestión de Objetos' : 'Registrar Objeto Encontrado';
+        if (formHelp) formHelp.textContent = 'El personal registra los objetos del centro comercial para iniciar el matching.';
         if (itemType) itemType.value = 'FOUND';
         if (submitBtnText) submitBtnText.textContent = 'Publicar Reporte de Hallazgo';
         if (itemsTitle) itemsTitle.textContent = 'Todos los Reportes Activos';
         if (itemsSubtitle) itemsSubtitle.textContent = 'Inventario general de objetos perdidos y hallazgos en custodia.';
         if (staffTabs) staffTabs.classList.remove('hidden');
+
+        // Si es rol GERENCIA, activar por defecto la pestaña de Gerencia
+        if (isGerencia) {
+            activateGerenciaTab();
+        } else {
+            activateItemsTab();
+        }
     } else {
         if (formTitle) formTitle.textContent = 'Reportar Objeto Extraviado';
         if (formHelp) formHelp.textContent = 'Describe tu objeto para que nuestro motor de búsqueda lo compare con los hallazgos de seguridad.';
@@ -1054,25 +1617,34 @@ function showApplication(session) {
         if (itemsTitle) itemsTitle.textContent = 'Mis Reportes Registrados';
         if (itemsSubtitle) itemsSubtitle.textContent = 'Seguimiento en tiempo real del estado de tus pertenencias.';
         if (staffTabs) staffTabs.classList.add('hidden');
-        if (itemsView) itemsView.classList.remove('hidden');
-        if (matchesView) matchesView.classList.add('hidden');
-    }
-
-    // Resetear pestañas staff
-    if (tabItems && tabMatches) {
-        tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
-        tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
+        if (staffSearchSection) {
+            staffSearchSection.classList.add('hidden');
+            const pickupCodeInput = document.getElementById('pickupCodeInput');
+            const searchCodeResult = document.getElementById('searchCodeResult');
+            if (pickupCodeInput) pickupCodeInput.value = '';
+            if (searchCodeResult) {
+                searchCodeResult.innerHTML = '';
+                searchCodeResult.classList.add('hidden');
+            }
+        }
+        activateItemsTab();
     }
 
     loadData();
 }
 
 function showLanding() {
+    // El logout elimina conversación, formulario, foto y estado visual del usuario anterior.
+    resetMallBotSessionState({ showWelcome: true });
+
     window.activeSession = null;
     window.currentUserIsStaff = false;
+    window.currentUserIsGerencia = false;
     window.currentUserData = null;
     window.currentItems = [];
     window.currentMatches = [];
+    activateItemsTab();
+    document.getElementById('donationModal')?.classList.add('hidden');
 
     // Ocultar Asistente MallBot
     document.getElementById('mallBotFloatingBtn')?.classList.add('hidden');
@@ -1115,6 +1687,10 @@ function showLanding() {
     document.getElementById('navAuthPublic')?.classList.remove('hidden');
     document.getElementById('navAuthLogged')?.classList.add('hidden');
     document.getElementById('navRegisterLink')?.classList.remove('hidden');
+
+    // Evitar residuos visuales de controles exclusivos de Staff al cerrar sesión.
+    const staffSearchSection = document.getElementById('staffSearchSection');
+    if (staffSearchSection) staffSearchSection.classList.add('hidden');
 }
 
 // ============================================================================
@@ -1160,6 +1736,12 @@ function appendMallBotMessage(sender, text, isHtml = false) {
 
 window.mallBotAttachedPhoto = null;
 
+function mallBotHasRealValue(value) {
+    if (value === null || value === undefined) return false;
+    const normalized = String(value).trim().toLowerCase();
+    return !['', 'null', 'none', 'undefined', 'no definido', 'no definida'].includes(normalized);
+}
+
 function updateMallBotLiveBadges(extracted) {
     const badgesContainer = document.getElementById('mallBotStateBadges');
     if (!badgesContainer) return;
@@ -1170,11 +1752,11 @@ function updateMallBotLiveBadges(extracted) {
     }
 
     const pills = [];
-    if (extracted.title) pills.push(`📌 ${escapeHtml(extracted.title)}`);
-    if (extracted.category) pills.push(`🏷️ ${escapeHtml(extracted.category)}`);
-    if (extracted.zone) pills.push(`📍 ${escapeHtml(extracted.zone)}`);
-    if (extracted.date) pills.push(`📅 ${escapeHtml(extracted.date)}`);
-    if (extracted.time) pills.push(`⏰ ${escapeHtml(extracted.time)}`);
+    if (mallBotHasRealValue(extracted.title)) pills.push(`📌 ${escapeHtml(extracted.title)}`);
+    if (mallBotHasRealValue(extracted.category)) pills.push(`🏷️ ${escapeHtml(extracted.category)}`);
+    if (mallBotHasRealValue(extracted.zone)) pills.push(`📍 ${escapeHtml(extracted.zone)}`);
+    if (mallBotHasRealValue(extracted.date)) pills.push(`📅 ${escapeHtml(extracted.date)}`);
+    if (mallBotHasRealValue(extracted.time)) pills.push(`⏰ ${escapeHtml(extracted.time)}`);
     if (window.mallBotAttachedPhoto) pills.push(`📷 Foto lista`);
 
     if (pills.length === 0) {
@@ -1188,7 +1770,7 @@ function applyMallBotExtractedData(extracted, isComplete) {
     if (!extracted || typeof extracted !== 'object') return;
 
     // 1. Título
-    if (extracted.title && String(extracted.title).trim() !== '' && String(extracted.title).toLowerCase() !== 'null') {
+    if (mallBotHasRealValue(extracted.title)) {
         const titleInput = document.getElementById('title');
         if (titleInput) {
             titleInput.value = extracted.title;
@@ -1200,7 +1782,7 @@ function applyMallBotExtractedData(extracted, isComplete) {
     }
 
     // 2. Categoría
-    if (extracted.category && String(extracted.category).trim() !== '' && String(extracted.category).toLowerCase() !== 'null') {
+    if (mallBotHasRealValue(extracted.category)) {
         const categorySelect = document.getElementById('category');
         const categoryOtherContainer = document.getElementById('categoryOtherContainer');
         const categoryOtherInput = document.getElementById('categoryOtherInput');
@@ -1273,7 +1855,7 @@ function applyMallBotExtractedData(extracted, isComplete) {
     }
 
     // 3. Zona
-    if (extracted.zone && String(extracted.zone).trim() !== '' && String(extracted.zone).toLowerCase() !== 'null') {
+    if (mallBotHasRealValue(extracted.zone)) {
         const zoneSelect = document.getElementById('zone');
         const zoneOtherContainer = document.getElementById('zoneOtherContainer');
         const zoneOtherInput = document.getElementById('zoneOtherInput');
@@ -1344,32 +1926,50 @@ function applyMallBotExtractedData(extracted, isComplete) {
         }
     }
 
-    // 4. Fecha
-    if (extracted.date && String(extracted.date).trim() !== '' && String(extracted.date).toLowerCase() !== 'null') {
+   // 4. Fecha
+    if (
+        extracted.date &&
+        String(extracted.date).trim() !== '' &&
+        String(extracted.date).toLowerCase() !== 'null' &&
+        String(extracted.date).toLowerCase() !== 'no definido'
+    ) {
         const dateInput = document.getElementById('itemDate');
+
         if (dateInput) {
             dateInput.value = extracted.date;
             dateInput.dispatchEvent(new Event('input', { bubbles: true }));
             dateInput.dispatchEvent(new Event('change', { bubbles: true }));
             dateInput.classList.add('field-autofilled');
-            setTimeout(() => dateInput.classList.remove('field-autofilled'), 2000);
+
+            setTimeout(() => {
+                dateInput.classList.remove('field-autofilled');
+            }, 2000);
         }
     }
 
     // 4.1 Hora Aproximada (Opcional)
-    if (extracted.time && String(extracted.time).trim() !== '' && String(extracted.time).toLowerCase() !== 'null') {
+    if (
+        extracted.time &&
+        String(extracted.time).trim() !== '' &&
+        String(extracted.time).toLowerCase() !== 'null' &&
+        String(extracted.time).toLowerCase() !== 'no definido'
+    ) {
         const timeInput = document.getElementById('itemTime');
+
         if (timeInput) {
             timeInput.value = extracted.time;
             timeInput.dispatchEvent(new Event('input', { bubbles: true }));
             timeInput.dispatchEvent(new Event('change', { bubbles: true }));
             timeInput.classList.add('field-autofilled');
-            setTimeout(() => timeInput.classList.remove('field-autofilled'), 2000);
+
+            setTimeout(() => {
+                timeInput.classList.remove('field-autofilled');
+            }, 2000);
         }
     }
 
     // 5. Descripción
-    if (extracted.description && String(extracted.description).trim() !== '' && String(extracted.description).toLowerCase() !== 'null') {
+    if (mallBotHasRealValue(extracted.description)) {
         const descInput = document.getElementById('description');
         if (descInput) {
             descInput.value = extracted.description;
@@ -1783,21 +2383,7 @@ function initMallBot() {
 
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
-            window.mallBotHistory = [];
-            window.mallBotAttachedPhoto = null;
-            if (photoInput) photoInput.value = '';
-            if (photoBar) photoBar.classList.add('hidden');
-            const messagesContainer = document.getElementById('mallBotMessages');
-            if (messagesContainer) {
-                messagesContainer.innerHTML = `
-                    <div class="mallbot-msg mallbot-msg-bot">
-                        <p class="font-medium">¡Conversación reiniciada! 🔄</p>
-                        <p class="mt-1 text-xs theme-text-secondary">Dime qué objeto perdiste, usa el micrófono 🎙️ o adjunta una foto 📷 para comenzar.</p>
-                    </div>
-                `;
-            }
-            updateMallBotLiveBadges(null);
-            document.getElementById('mallBotSubmitWrap')?.classList.add('hidden');
+            resetMallBotSessionState({ showWelcome: true });
         });
     }
 
@@ -2443,12 +3029,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Filtros de Estado para Reportes (Iluminación limpia & Alto Contraste)
+// 6. Filtros de Estado para Reportes (Iluminación limpia & Alto Contraste)
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             window.currentFilter = this.dataset.filter || 'ALL';
+            
+            // --- NUEVO: Mostrar buscador de entrega solo en la pestaña "Entregados" (Staff) ---
+            const searchSection = document.getElementById('staffSearchSection');
+            if (searchSection && window.currentUserIsStaff) {
+                if (window.currentFilter === 'DELIVERED') {
+                    searchSection.classList.remove('hidden');
+                } else {
+                    searchSection.classList.add('hidden');
+                    // Limpiar el buscador al cambiar de pestaña
+                    const input = document.getElementById('pickupCodeInput');
+                    if(input) input.value = '';
+                    const result = document.getElementById('searchCodeResult');
+                    if(result) result.classList.add('hidden');
+                }
+            }
+
             renderItems();
         });
     });
@@ -2644,32 +3246,167 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 10. Pestañas de Staff (Items vs Matches)
+    // 10. Pestañas de Staff & Gerencia (Items vs Matches vs Gerencia)
     const tabItems = document.getElementById('tabItems');
     const tabMatches = document.getElementById('tabMatches');
-    const itemsView = document.getElementById('itemsView');
-    const matchesView = document.getElementById('matchesView');
+    const tabGerencia = document.getElementById('tabGerencia');
 
-    if (tabItems && tabMatches) {
-        tabItems.addEventListener('click', () => {
-            itemsView?.classList.remove('hidden');
-            matchesView?.classList.add('hidden');
-            tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
-            tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
+    if (tabItems) tabItems.addEventListener('click', activateItemsTab);
+    if (tabMatches) tabMatches.addEventListener('click', activateMatchesTab);
+    if (tabGerencia) tabGerencia.addEventListener('click', activateGerenciaTab);
+
+    // Controles del Panel de Gerencia
+    const gerenciaPeriodFilter = document.getElementById('gerenciaPeriodFilter');
+    if (gerenciaPeriodFilter) {
+        gerenciaPeriodFilter.addEventListener('change', () => renderGerenciaDashboard());
+    }
+
+    const btnExportCsv = document.getElementById('btnExportCsv');
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', exportGerenciaCsv);
+    }
+
+    const btnOpenDonationModal = document.getElementById('btnOpenDonationModal');
+    if (btnOpenDonationModal) {
+        btnOpenDonationModal.addEventListener('click', () => openDonationModal());
+    }
+
+    const btnGenerateFullLotActa = document.getElementById('btnGenerateFullLotActa');
+    if (btnGenerateFullLotActa) {
+        btnGenerateFullLotActa.addEventListener('click', () => openDonationModal());
+    }
+
+    const closeDonationModalBtn = document.getElementById('closeDonationModal');
+    const btnCloseDonationModalBtn = document.getElementById('btnCloseDonationModalBtn');
+    if (closeDonationModalBtn) closeDonationModalBtn.addEventListener('click', closeDonationModal);
+    if (btnCloseDonationModalBtn) btnCloseDonationModalBtn.addEventListener('click', closeDonationModal);
+
+    const btnPrintActa = document.getElementById('btnPrintActa');
+    if (btnPrintActa) {
+        btnPrintActa.addEventListener('click', () => {
+            window.print();
         });
+    }
 
-        tabMatches.addEventListener('click', () => {
-            itemsView?.classList.add('hidden');
-            matchesView?.classList.remove('hidden');
-            tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary';
-            tabMatches.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm';
-            renderStaffMatches();
+    // RoleBadge click para acceso directo a Gerencia
+    const roleBadge = document.getElementById('roleBadge');
+    if (roleBadge) {
+        roleBadge.addEventListener('click', () => {
+            if (window.currentUserIsGerencia || window.currentUserIsStaff) {
+                activateGerenciaTab();
+            }
         });
     }
 
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => loadData());
+    }
+
+// =======================================================================
+    // 10.5 LÓGICA DE BÚSQUEDA Y ENTREGA POR CÓDIGO (SOLO STAFF)
+    // =======================================================================
+    const searchCodeBtn = document.getElementById('searchCodeBtn');
+    const pickupCodeInput = document.getElementById('pickupCodeInput');
+    const searchCodeResult = document.getElementById('searchCodeResult');
+
+    if (searchCodeBtn && pickupCodeInput && searchCodeResult) {
+        searchCodeBtn.addEventListener('click', () => {
+            const code = pickupCodeInput.value.trim().toUpperCase();
+            if (!code) {
+                alert('Por favor ingresa un código.');
+                return;
+            }
+
+            // Búsqueda ultrarrápida en memoria (sin llamar a la API)
+            const item = window.currentItems.find(i => (i.pickupCode || '').toUpperCase() === code);
+            
+            if (!item) {
+                searchCodeResult.innerHTML = `<p class="text-xs text-rose-500 font-bold text-center">✕ Código no encontrado o incorrecto.</p>`;
+                searchCodeResult.classList.remove('hidden');
+                return;
+            }
+
+            const isDeliverable = String(item.status).toUpperCase() === 'VALIDATED';
+            const isAlreadyDelivered = String(item.status).toUpperCase() === 'DELIVERED';
+            
+            if (isAlreadyDelivered) {
+                searchCodeResult.innerHTML = `<p class="text-xs text-amber-500 font-bold text-center">⚠️ Este objeto ya fue entregado anteriormente.</p>`;
+                searchCodeResult.classList.remove('hidden');
+                return;
+            }
+
+            // Mostrar el resultado con los botones de acción
+            searchCodeResult.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="w-16 h-16 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                        <img src="${escapeHtml(item.imageUrl || getCategoryPlaceholderImage(item.category))}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-1">
+                        <h5 class="font-bold text-sm theme-text-primary">${escapeHtml(item.title)}</h5>
+                        <p class="text-xs theme-text-muted mt-1">ID Reporte: <strong>${escapeHtml(item.itemID.substring(0, 8))}...</strong></p>
+                        <p class="text-xs font-semibold mt-1 ${isDeliverable ? 'text-blue-500' : 'text-rose-500'}">Estado: ${escapeHtml(item.status)}</p>
+                    </div>
+                </div>
+                
+                <!-- Botones de Acción (Entregar / Cancelar) -->
+                <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row gap-3">
+                    ${isDeliverable ? 
+                        `<button type="button" id="deliverItemConfirmBtn" class="flex-1 btn-pill py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md cursor-pointer">
+                            ✓ Entregar Objeto
+                        </button>` 
+                        : 
+                        `<div class="flex-1 text-xs text-rose-600 bg-rose-50 dark:bg-rose-950/30 p-2.5 rounded-xl text-center border border-rose-200 dark:border-rose-900 font-medium">
+                            ⚠️ Aún no está validado por seguridad
+                        </div>`
+                    }
+                    <button type="button" id="cancelDeliverBtn" class="flex-1 btn-pill py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-sm transition-colors cursor-pointer">
+                        ✕ Cancelar
+                    </button>
+                </div>
+            `;
+            searchCodeResult.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+
+            // Lógica del botón Cancelar
+            const cancelBtn = document.getElementById('cancelDeliverBtn');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    searchCodeResult.classList.add('hidden');
+                    pickupCodeInput.value = '';
+                });
+            }
+
+            // Lógica del botón Entregar
+            const deliverItemConfirmBtn = document.getElementById('deliverItemConfirmBtn');
+            if (deliverItemConfirmBtn) {
+                deliverItemConfirmBtn.addEventListener('click', async function() {
+                    const btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="inline-block animate-spin mr-2">⏳</span> Procesando...';
+
+                    try {
+                        // Cambiamos el estado en la base de datos (AWS DynamoDB)
+                        await apiFetch(`${ITEMS_URL}/${encodeURIComponent(item.itemID)}/deliver`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({})
+                        });
+
+                        alert('✓ ¡Objeto marcado como entregado exitosamente!');
+                        pickupCodeInput.value = '';
+                        searchCodeResult.classList.add('hidden');
+                        
+                        // Recargar los datos de DynamoDB para actualizar la tabla
+                        loadData(); 
+                    } catch (err) {
+                        console.error('Error entregando:', err);
+                        alert('Error de conexión al entregar: ' + err.message);
+                        btn.disabled = false;
+                        btn.innerHTML = '✓ Entregar Objeto';
+                    }
+                });
+            }
+        });
     }
 
     // 11. Inicializar Asistente Virtual MallBot
