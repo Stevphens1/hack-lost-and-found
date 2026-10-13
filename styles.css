@@ -1000,3 +1000,100 @@ body.dark-theme .hotspot-bar-wrapper {
         display: none !important;
     }
 }
+
+/* ==========================================================================
+   ALTO CONTRASTE - CONTROLES Y TABLAS DE GERENCIA
+   ========================================================================== */
+
+.gerencia-control-pill {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+}
+
+body.dark-theme .gerencia-control-pill,
+.dark .gerencia-control-pill {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+.gerencia-control-pill label {
+    color: #475569 !important;
+}
+
+body.dark-theme .gerencia-control-pill label,
+.dark .gerencia-control-pill label {
+    color: #94a3b8 !important;
+}
+
+.gerencia-control-pill select {
+    color: #0f172a !important;
+    background-color: transparent !important;
+}
+
+body.dark-theme .gerencia-control-pill select,
+.dark .gerencia-control-pill select {
+    color: #f8fafc !important;
+    background-color: #1e293b !important;
+}
+
+.gerencia-control-pill select option {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+body.dark-theme .gerencia-control-pill select option,
+.dark .gerencia-control-pill select option {
+    background-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+.gerencia-btn-csv {
+    background-color: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+.gerencia-btn-csv:hover {
+    background-color: #e2e8f0 !important;
+}
+
+body.dark-theme .gerencia-btn-csv,
+.dark .gerencia-btn-csv {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+
+body.dark-theme .gerencia-btn-csv:hover,
+.dark .gerencia-btn-csv:hover {
+    background-color: #334155 !important;
+}
+
+/* Cabeceras de tabla de Donaciones con Alto Contraste */
+.gerencia-table-head {
+    background-color: #f1f5f9 !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.gerencia-table-head th {
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    letter-spacing: 0.04em !important;
+    padding: 10px 12px !important;
+}
+
+body.dark-theme .gerencia-table-head,
+.dark .gerencia-table-head {
+    background-color: #0f172a !important;
+    border-bottom: 2px solid #334155 !important;
+}
+
+body.dark-theme .gerencia-table-head th,
+.dark .gerencia-table-head th {
+    color: #e2e8f0 !important;
+    font-weight: 700 !important;
+}

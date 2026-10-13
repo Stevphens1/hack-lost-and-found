@@ -90,12 +90,14 @@ function initTheme() {
 
 function applyTheme(theme) {
     const body = document.body;
+    const docEl = document.documentElement;
     const themeIcon = document.getElementById('themeIcon');
     const themeText = document.getElementById('themeText');
 
     if (theme === 'dark') {
         body.classList.remove('light-theme');
         body.classList.add('dark-theme', 'dark');
+        docEl.classList.add('dark');
         if (themeIcon) {
             themeIcon.setAttribute('data-lucide', 'sun');
         }
@@ -105,6 +107,7 @@ function applyTheme(theme) {
     } else {
         body.classList.remove('dark-theme', 'dark');
         body.classList.add('light-theme');
+        docEl.classList.remove('dark');
         if (themeIcon) {
             themeIcon.setAttribute('data-lucide', 'moon');
         }

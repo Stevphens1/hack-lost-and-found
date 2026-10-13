@@ -7,6 +7,11 @@
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        };
+    </script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -15,7 +20,7 @@
     <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
 
     <!-- Custom CSS (Separated) -->
-    <link rel="stylesheet" href="styles.css?v=20261009-executive-2">
+    <link rel="stylesheet" href="styles.css?v=20261012-contrast-2">
 </head>
 
 <body class="light-theme antialiased min-h-screen">
@@ -915,9 +920,9 @@
                             </div>
 
                             <div class="flex flex-wrap items-center gap-2.5 self-stretch md:self-auto">
-                                <div class="flex items-center gap-1.5 bg-white dark:bg-slate-900 border rounded-2xl px-3 py-1.5 shadow-sm">
-                                    <label for="gerenciaPeriodFilter" class="text-xs font-semibold theme-text-muted">Período:</label>
-                                    <select id="gerenciaPeriodFilter" class="bg-transparent text-xs font-medium theme-text-primary cursor-pointer outline-none">
+                                <div class="gerencia-control-pill flex items-center gap-2 rounded-2xl px-3.5 py-1.5 shadow-sm">
+                                    <label for="gerenciaPeriodFilter" class="text-xs font-bold opacity-80">Período:</label>
+                                    <select id="gerenciaPeriodFilter" class="text-xs font-semibold cursor-pointer outline-none bg-transparent">
                                         <option value="ALL">Todo el Histórico</option>
                                         <option value="30D">Últimos 30 días</option>
                                         <option value="7D">Últimos 7 días</option>
@@ -927,10 +932,10 @@
                                 <button
                                     id="btnExportCsv"
                                     type="button"
-                                    class="btn-pill px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-semibold theme-text-primary flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
+                                    class="btn-pill gerencia-btn-csv px-4 py-2 text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-all"
                                     title="Exportar base de datos consolidada a Excel / CSV"
                                 >
-                                    <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600"></i>
+                                    <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400"></i>
                                     <span>Exportar CSV</span>
                                 </button>
 
@@ -1084,7 +1089,7 @@
                             <!-- Tabla de Artículos No Reclamados -->
                             <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
                                 <table class="w-full text-left text-xs">
-                                    <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 theme-text-muted uppercase text-[10px] tracking-wider font-semibold">
+                                    <thead class="gerencia-table-head uppercase text-[11px] font-bold">
                                         <tr>
                                             <th class="p-3">Código / ID</th>
                                             <th class="p-3">Objeto</th>
@@ -1345,7 +1350,7 @@
             <!-- Tabla de Bienes a Donar -->
             <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 mb-6">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-50 dark:bg-slate-900 border-b theme-text-muted uppercase text-[10px] font-bold">
+                    <thead class="gerencia-table-head uppercase text-[10px] font-bold">
                         <tr>
                             <th class="p-2.5">N°</th>
                             <th class="p-2.5">Código Item</th>
