@@ -980,13 +980,13 @@
                                     <i data-lucide="clock" class="w-4 h-4"></i>
                                 </div>
                                 <div id="kpiAvgDays" class="text-2xl font-extrabold font-heading theme-text-primary">0 d</div>
-                                <p class="text-[10px] theme-text-muted mt-1">Días en almacén (hallazgos)</p>
+                                <p class="text-[10px] theme-text-muted mt-1">Promedio hasta retiro</p>
                             </div>
 
                             <!-- KPI 4: Lote de Donación (+30 días) -->
                             <div class="theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
                                 <div class="flex items-center justify-between text-amber-500 mb-2">
-                                    <span class="text-[11px] font-bold uppercase tracking-wider">Donables (+30d)</span>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider">Donables</span>
                                     <i data-lucide="archive" class="w-4 h-4"></i>
                                 </div>
                                 <div id="kpiDonationEligible" class="text-2xl font-extrabold font-heading text-amber-500">0</div>
@@ -994,13 +994,59 @@
                             </div>
 
                             <!-- KPI 5: Valor Estimado Protegido -->
-                            <div class="col-span-2 lg:col-span-1 theme-card border rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                            <div class="col-span-2 lg:col-span-1 theme-card border rounded-2xl p-4 shadow-sm relative">
                                 <div class="flex items-center justify-between text-purple-600 mb-2">
                                     <span class="text-[11px] font-bold uppercase tracking-wider">Valor Protegido</span>
-                                    <i data-lucide="shield-check" class="w-4 h-4"></i>
+                                    <div class="relative group/tooltip">
+                                        <i data-lucide="shield-check" class="w-4 h-4 cursor-pointer hover:scale-110 transition-transform"></i>
+                                        <!-- Tooltip flotante con costos estimados por categoría al pasar el mouse -->
+                                        <div class="absolute right-0 bottom-full mb-2 hidden group-hover/tooltip:block z-50 w-64 p-3.5 bg-slate-900/95 dark:bg-slate-800 text-white rounded-2xl shadow-2xl border border-slate-700/80 backdrop-blur-md text-[11px] pointer-events-none transition-all">
+                                            <div class="font-bold text-xs border-b border-slate-700 pb-1.5 mb-2 text-purple-300 flex items-center justify-between">
+                                                <span>Costos Estimados (PEN)</span>
+                                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">Referencial</span>
+                                            </div>
+                                            <div class="space-y-1 font-mono text-[10px]">
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">💻 Laptops y Tecnología:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 2,200</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">📱 Smartphones y Tablets:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 1,500</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">💎 Joyas y Relojes:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 450</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">👛 Billeteras y Documentos:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 180</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">🎒 Mochilas y Bolsos:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 120</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">👕 Prendas y Ropa:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 80</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5 border-b border-slate-800/60">
+                                                    <span class="text-slate-300">🔑 Llaves:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 40</span>
+                                                </div>
+                                                <div class="flex justify-between py-0.5">
+                                                    <span class="text-slate-300">📦 Otros:</span>
+                                                    <span class="font-bold text-emerald-400">S/ 60</span>
+                                                </div>
+                                            </div>
+                                            <p class="mt-2 text-[9px] text-slate-400 italic">
+                                                *Valores promedio de reposición según categoría.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div id="kpiEstimatedValue" class="text-2xl font-extrabold font-heading theme-text-primary">S/ 0</div>
-                                <p class="text-[10px] theme-text-muted mt-1">Bienes custodiados en almacén</p>
+                                <p class="text-[10px] theme-text-muted mt-1">Impacto económico estimado</p>
                             </div>
                         </div>
 
