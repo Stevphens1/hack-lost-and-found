@@ -1073,23 +1073,26 @@ function renderGerenciaDashboard() {
     // 2. Cálculo de KPIs
     const totalCount = filteredItems.length;
     const lostCount = filteredItems.filter(i => i.type === 'LOST').length;
-    const foundCount = filteredItems.filter(i => i.type === 'FOUND').length;
+    const foundItems = filteredItems.filter(i => i.type === 'FOUND');
+    const foundCount = foundItems.length;
     
     const deliveredItems = filteredItems.filter(i => {
         const st = String(i.status || '').toUpperCase();
         return ['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED', 'COMPLETED', 'RESUELTO'].includes(st);
     });
-    const deliveredCount = deliveredItems.length;
     
+    // Tasa de recuperación: porcentaje de hallazgos devueltos formalmente a sus dueños
+    const deliveredFoundCount = deliveredItems.filter(i => i.type === 'FOUND').length;
     const recoveryRate = foundCount > 0 
-        ? Math.round((deliveredCount / foundCount) * 100) 
-        : (totalCount > 0 ? Math.round((deliveredCount / totalCount) * 100) : 0);
+        ? Math.min(100, Math.round((deliveredFoundCount / foundCount) * 100)) 
+        : 0;
 
+    // Días de custodia física en almacén: solo aplica a objetos hallados (FOUND)
     let totalDaysCustody = 0;
-    filteredItems.forEach(i => {
+    foundItems.forEach(i => {
         totalDaysCustody += calculateItemDaysInCustody(i);
     });
-    const avgDays = totalCount > 0 ? (totalDaysCustody / totalCount).toFixed(1) : 0;
+    const avgDays = foundCount > 0 ? (totalDaysCustody / foundCount).toFixed(1) : 0;
 
     // Artículos de donación (FOUND, no entregados, >= 30 días)
     const donationEligibleItems = allItems.filter(i => {
@@ -1099,8 +1102,9 @@ function renderGerenciaDashboard() {
         return i.type === 'FOUND' && isNotDelivered && days >= 30;
     });
 
+    // Valor económico protegido: solo aplica a objetos hallados (FOUND) bajo custodia física de seguridad
     let totalEstimatedValue = 0;
-    filteredItems.forEach(i => {
+    foundItems.forEach(i => {
         totalEstimatedValue += getCategoryEstimatedValue(i.category);
     });
 
@@ -1198,8 +1202,9 @@ function renderTimeDistributionAndCategories(items) {
     const catContainer = document.getElementById('categoriesRankingContainer');
 
     let morning = 0, afternoon = 0, night = 0;
+    let itemsWithTime = 0;
     items.forEach(i => {
-        const timeStr = String(i.time || '').toLowerCase();
+        const timeStr = String(i.time || '').toLowerCase().trim();
         let hour = -1;
         const match = timeStr.match(/(\d{1,2}):/);
         if (match) {
@@ -1207,12 +1212,15 @@ function renderTimeDistributionAndCategories(items) {
             if (timeStr.includes('pm') && hour < 12) hour += 12;
             if (timeStr.includes('am') && hour === 12) hour = 0;
         }
-        if (hour >= 6 && hour < 13) morning++;
-        else if (hour >= 13 && hour < 19) afternoon++;
-        else night++;
+        if (hour >= 0) {
+            itemsWithTime++;
+            if (hour < 13) morning++;
+            else if (hour >= 13 && hour < 18) afternoon++;
+            else night++;
+        }
     });
 
-    const total = items.length || 1;
+    const total = itemsWithTime || items.length || 1;
     if (timeContainer) {
         timeContainer.innerHTML = `
             <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
