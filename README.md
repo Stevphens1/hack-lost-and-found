@@ -8,7 +8,7 @@ Plataforma Serverless en **Amazon Web Services (AWS)** diseñada para centros co
 
 * 🎨 **Diseño Moderno & Responsivo:** Inspirado en la estética limpia de *Sync Labs* con soporte completo para **Modo Claro** y **Modo Oscuro** (*Dimension*).
 * 🔐 **Seguridad & Autenticación:** Integración con **Amazon Cognito** (User Pools) con gestión de roles para **Personal de Seguridad (Staff)** y **Visitantes (Clientes)**.
-* 🤖 **Matching Inteligente Serverless:** Motor de scoring multicriterio (Categoría, Zona, Fecha y Similitud Textual) ejecutado en **AWS Lambda**.
+* 🤖 **Matching Inteligente Serverless:** Motor de scoring multicriterio (Categoría, Zona, Fecha y Similitud Textual) ejecutado en **AWS Bedrock Nova Lite**.
 * 🖼️ **Almacenamiento Directo:** Carga segura de fotografías hacia **Amazon S3** mediante URLs prefirmadas.
 * 🗄️ **Base de Datos NoSQL:** Gestión de reportes y coincidencias en **Amazon DynamoDB**.
 * 📧 **Notificaciones Automáticas:** Envío de alertas por correo electrónico mediante **Amazon SES** al validar o descartar coincidencias.
@@ -18,8 +18,10 @@ Plataforma Serverless en **Amazon Web Services (AWS)** diseñada para centros co
 
 ## 🏗️ Arquitectura en AWS
 
+<img width="1600" height="1410" alt="Arq - copia" src="https://github.com/user-attachments/assets/09e0d64e-f4da-4f3b-9737-3c43408a3a88" />
+
 ```
-<img width="1600" height="1410" alt="Arq" src="https://github.com/user-attachments/assets/5066f71a-442b-481d-b795-675a75abbc8a" />
+
 ```
 
 ---
