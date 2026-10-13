@@ -56,5 +56,5 @@ Plataforma Serverless en **Amazon Web Services (AWS)** diseñada para centros co
 ---
 
 ## 👥 Equipo Hackathon
-* **Autor / Participante:** Steven Alfredo Relayza Perez
-* **Institución:** Universidad Tecnológica del Perú (UTP)
+* Equipo: Nicolas Murcia, Alonzo Loyaga, Steven Relayza
+* Programa: AWS re/Start
