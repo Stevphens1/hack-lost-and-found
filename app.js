@@ -882,6 +882,7 @@ async function loadData() {
         const itemsResult = await apiFetch(ITEMS_URL, { method: 'GET' });
         const rawItems = extractArrayFromResponse(itemsResult, 'items');
         window.currentItems = rawItems.map(normalizeItem);
+        window.lastSyncAt = Date.now();
 
         try {
             const matchesResult = await apiFetch(MATCHES_URL, { method: 'GET' });
@@ -1028,14 +1029,82 @@ function activateGerenciaTab() {
     renderGerenciaDashboard();
 }
 
+// ----------------------------------------------------------------------------
+// Constantes y utilidades del módulo
+// ----------------------------------------------------------------------------
+const GER_DAY_MS = 24 * 60 * 60 * 1000;
+const GER_DONATION_DAYS = 30;
+const GER_LEGAL_DAYS = 90;
+const GER_WARNING_DAYS = 20;
+const GER_DELIVERED_STATES = ['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED', 'COMPLETED', 'RESUELTO'];
+const GER_VALIDATED_STATES = ['VALIDATED', 'CONFIRMED', 'MATCHED', 'APROBADO', 'VALIDADO'];
+const GER_SLOTS = {
+    morning:   { label: 'Mañana', range: '10:00 – 13:00', icon: '☀️' },
+    afternoon: { label: 'Tarde',  range: '13:00 – 18:00', icon: '🌤️' },
+    night:     { label: 'Noche',  range: '18:00 – 22:00', icon: '🌙' }
+};
+const GER_SLOT_KEYS = ['morning', 'afternoon', 'night'];
+const GER_WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+window.gerenciaDonationLot = [];
+window.gerenciaDonationFilter = 'ALL';   // ALL | D30 (30-89 d) | D90 (>= 90 d)
+window.gerenciaSelectedIds = new Set();
+window.gerenciaInsightsText = '';
+
+function gerSetText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function gerSetHtml(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+function gerMoney(n) {
+    return `S/ ${Math.round(Number(n) || 0).toLocaleString('es-PE')}`;
+}
+
+function gerN(n, one, many) {
+    return `${n} ${n === 1 ? one : many}`;
+}
+
+function gerPct(n, d) {
+    return d > 0 ? Math.round((n / d) * 100) : 0;
+}
+
+// Acepta puntajes 0-1 o 0-100 y los devuelve siempre en escala 0-100
+function gerNormScore(v) {
+    const n = Number(v) || 0;
+    return n > 0 && n <= 1 ? n * 100 : n;
+}
+
+function gerIsDelivered(item) {
+    return GER_DELIVERED_STATES.includes(String(item?.status || '').toUpperCase());
+}
+
+function gerIsValidated(item) {
+    return GER_VALIDATED_STATES.includes(String(item?.status || '').toUpperCase());
+}
+
+function gerParseDate(raw) {
+    if (raw === undefined || raw === null || raw === '') return null;
+    let d;
+    if (raw instanceof Date) {
+        d = raw;
+    } else if (typeof raw === 'number' || /^\d{10,}$/.test(String(raw))) {
+        d = new Date(Number(raw));
+    } else {
+        const s = String(raw);
+        d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? `${s}T00:00:00` : s);
+    }
+    return isNaN(d.getTime()) ? null : d;
+}
+
 function calculateItemDaysInCustody(item) {
-    const rawDate = item.createdAt || item.date;
-    if (!rawDate) return 0;
-    const itemDate = new Date(rawDate);
-    if (isNaN(itemDate.getTime())) return 0;
-    const diffMs = Date.now() - itemDate.getTime();
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return days >= 0 ? days : 0;
+    const d = gerParseDate(item?.createdAt || item?.date);
+    if (!d) return 0;
+    return Math.max(0, Math.floor((Date.now() - d.getTime()) / GER_DAY_MS));
 }
 
 function getCategoryEstimatedValue(category) {
@@ -1050,247 +1119,754 @@ function getCategoryEstimatedValue(category) {
     return 60;
 }
 
-function renderGerenciaDashboard() {
-    const allItems = window.currentItems || [];
-    const filterEl = document.getElementById('gerenciaPeriodFilter');
-    const period = filterEl ? filterEl.value : 'ALL';
-
-    // 1. Filtrar por período
-    let filteredItems = allItems;
-    const now = Date.now();
-    if (period === '7D') {
-        filteredItems = allItems.filter(item => {
-            const d = new Date(item.createdAt || item.date).getTime();
-            return !isNaN(d) && (now - d) <= (7 * 24 * 60 * 60 * 1000);
-        });
-    } else if (period === '30D') {
-        filteredItems = allItems.filter(item => {
-            const d = new Date(item.createdAt || item.date).getTime();
-            return !isNaN(d) && (now - d) <= (30 * 24 * 60 * 60 * 1000);
-        });
+// Hora (0-23) del suceso a partir de "HH:MM", "h:mm pm", etc. Si no viene campo 'time', se extrae de createdAt o date.
+function gerGetHour(item) {
+    const t = String(item?.time || '').trim().toLowerCase();
+    if (t) {
+        const m = t.match(/(\d{1,2})\s*(?::\s*\d{2})?\s*(a\.?\s?m\.?|p\.?\s?m\.?)?/);
+        if (m) {
+            let h = parseInt(m[1], 10);
+            const meridiem = (m[2] || '').replace(/[\s.]/g, '');
+            if (meridiem === 'pm' && h < 12) h += 12;
+            if (meridiem === 'am' && h === 12) h = 0;
+            if (h >= 0 && h <= 23) return h;
+        }
     }
-
-    // 2. Cálculo de KPIs
-    const totalCount = filteredItems.length;
-    const lostCount = filteredItems.filter(i => i.type === 'LOST').length;
-    const foundCount = filteredItems.filter(i => i.type === 'FOUND').length;
-    
-    const deliveredItems = filteredItems.filter(i => {
-        const st = String(i.status || '').toUpperCase();
-        return ['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED', 'COMPLETED', 'RESUELTO'].includes(st);
-    });
-    const deliveredCount = deliveredItems.length;
-    
-    const recoveryRate = foundCount > 0 
-        ? Math.round((deliveredCount / foundCount) * 100) 
-        : (totalCount > 0 ? Math.round((deliveredCount / totalCount) * 100) : 0);
-
-    let totalDaysCustody = 0;
-    filteredItems.forEach(i => {
-        totalDaysCustody += calculateItemDaysInCustody(i);
-    });
-    const avgDays = totalCount > 0 ? (totalDaysCustody / totalCount).toFixed(1) : 0;
-
-    // Artículos de donación (FOUND, no entregados, >= 30 días)
-    const donationEligibleItems = allItems.filter(i => {
-        const st = String(i.status || '').toUpperCase();
-        const isNotDelivered = !['DELIVERED', 'ENTREGADO', 'CLAIMED', 'CLOSED'].includes(st);
-        const days = calculateItemDaysInCustody(i);
-        return i.type === 'FOUND' && isNotDelivered && days >= 30;
-    });
-
-    // Valor económico protegido: solo aplica a objetos hallados (FOUND) bajo custodia física de seguridad
-    let totalEstimatedValue = 0;
-    const foundItemsForValue = filteredItems.filter(i => i.type === 'FOUND');
-    foundItemsForValue.forEach(i => {
-        totalEstimatedValue += getCategoryEstimatedValue(i.category);
-    });
-
-    // Inyectar en KPIs
-    const kpiTotalEl = document.getElementById('kpiTotalItems');
-    if (kpiTotalEl) kpiTotalEl.textContent = totalCount;
-
-    const kpiTotalSubEl = document.getElementById('kpiTotalSub');
-    if (kpiTotalSubEl) kpiTotalSubEl.textContent = `${lostCount} perdidos / ${foundCount} hallazgos`;
-
-    const kpiRecoveryEl = document.getElementById('kpiRecoveryRate');
-    if (kpiRecoveryEl) kpiRecoveryEl.textContent = `${recoveryRate}%`;
-
-    const kpiAvgDaysEl = document.getElementById('kpiAvgDays');
-    if (kpiAvgDaysEl) kpiAvgDaysEl.textContent = `${avgDays} d`;
-
-    const kpiDonationEl = document.getElementById('kpiDonationEligible');
-    if (kpiDonationEl) kpiDonationEl.textContent = donationEligibleItems.length;
-
-    const kpiValueEl = document.getElementById('kpiEstimatedValue');
-    if (kpiValueEl) kpiValueEl.textContent = `S/ ${totalEstimatedValue.toLocaleString('es-PE')}`;
-
-    // 3. Puntos Calientes (Heatmap de Zonas)
-    renderHotspots(filteredItems);
-
-    // 4. Franjas Horarias & Categorías
-    renderTimeDistributionAndCategories(filteredItems);
-
-    // 5. Tabla de Donaciones (+30 días)
-    renderDonationsTable(donationEligibleItems, allItems);
-
-    if (window.lucide) lucide.createIcons();
+    const rawDate = item?.createdAt || item?.date;
+    if (rawDate) {
+        const d = gerParseDate(rawDate);
+        if (d && !isNaN(d.getTime())) {
+            return d.getHours();
+        }
+    }
+    return null;
 }
 
-function renderHotspots(items) {
-    const container = document.getElementById('hotspotsContainer');
-    if (!container) return;
+function gerSlotForHour(h) {
+    if (h < 13) return 'morning';
+    if (h < 18) return 'afternoon';
+    return 'night';
+}
 
-    if (items.length === 0) {
-        container.innerHTML = '<p class="text-xs theme-text-muted py-4 text-center">No hay registros suficientes para calcular puntos calientes.</p>';
+// ----------------------------------------------------------------------------
+// Datos del período (actual y anterior) y cálculos
+// ----------------------------------------------------------------------------
+function gerGetScopedData() {
+    const all = window.currentItems || [];
+    const period = document.getElementById('gerenciaPeriodFilter')?.value || 'ALL';
+    const days = period === '7D' ? 7 : period === '30D' ? 30 : null;
+    if (!days) return { all, period, days, current: all, previous: null };
+
+    const now = Date.now();
+    const inRange = (item, from, to) => {
+        const d = gerParseDate(item.createdAt || item.date);
+        if (!d) return false;
+        const t = d.getTime();
+        return t >= from && t < to;
+    };
+    return {
+        all, period, days,
+        current: all.filter(i => inRange(i, now - days * GER_DAY_MS, now + GER_DAY_MS)),
+        previous: all.filter(i => inRange(i, now - 2 * days * GER_DAY_MS, now - days * GER_DAY_MS))
+    };
+}
+
+function gerGetScopedMatches(current, period) {
+    const matches = window.currentMatches || [];
+    if (period === 'ALL') return matches;
+    const ids = new Set(current.map(i => i.itemID));
+    return matches.filter(m => ids.has(m.lostItemID) || ids.has(m.foundItemID));
+}
+
+function gerGetReservedFoundIds() {
+    return new Set(
+        (window.currentMatches || [])
+            .filter(m => String(m.status || '').toUpperCase() === 'VALIDATED' && m.foundItemID)
+            .map(m => m.foundItemID)
+    );
+}
+
+function gerComputeKpis(items) {
+    const lost = items.filter(i => i.type === 'LOST');
+    const found = items.filter(i => i.type === 'FOUND');
+    const deliveredLost = lost.filter(gerIsDelivered).length;
+    const deliveredFound = found.filter(gerIsDelivered).length;
+    const inCustody = found.filter(i => !gerIsDelivered(i));
+
+    // Casos recuperados: se toma el mayor entre ambos lados para no depender
+    // de cuál de los dos registros marca el backend como entregado.
+    let recovered = Math.max(deliveredLost, deliveredFound);
+    let returnRate;
+    if (found.length > 0) {
+        recovered = Math.min(recovered, found.length);
+        returnRate = gerPct(recovered, found.length);
+    } else {
+        recovered = deliveredLost;
+        returnRate = gerPct(deliveredLost, lost.length);
+    }
+
+    const avgDays = inCustody.length
+        ? inCustody.reduce((sum, i) => sum + calculateItemDaysInCustody(i), 0) / inCustody.length
+        : 0;
+
+    return {
+        total: items.length,
+        lost: lost.length,
+        found: found.length,
+        recovered,
+        returnRate,
+        inCustody: inCustody.length,
+        avgDays,
+        protectedValue: found.reduce((sum, i) => sum + getCategoryEstimatedValue(i.category), 0)
+    };
+}
+
+function gerComputeAnalytics(items) {
+    const zoneMap = {};
+    const catMap = {};
+    const zoneCatMap = {};
+    const slots = { morning: 0, afternoon: 0, night: 0, unknown: 0 };
+    const heat = Array.from({ length: 7 }, () => ({ morning: 0, afternoon: 0, night: 0 }));
+    let heatTotal = 0;
+
+    items.forEach(i => {
+        const zone = (i.zone && i.zone !== 'Zona no indicada') ? i.zone : 'Sin zona indicada';
+        zoneMap[zone] = (zoneMap[zone] || 0) + 1;
+
+        const cat = i.category || 'Otros';
+        catMap[cat] = (catMap[cat] || 0) + 1;
+        zoneCatMap[zone] = zoneCatMap[zone] || {};
+        zoneCatMap[zone][cat] = (zoneCatMap[zone][cat] || 0) + 1;
+
+        const hour = gerGetHour(i);
+        const slot = hour === null ? null : gerSlotForHour(hour);
+        if (slot) slots[slot]++; else slots.unknown++;
+
+        if (slot) {
+            const d = gerParseDate(i.date || i.createdAt);
+            if (d) {
+                heat[(d.getDay() + 6) % 7][slot]++;
+                heatTotal++;
+            }
+        }
+    });
+
+    const toRanking = (map) => Object.entries(map)
+        .map(([name, count]) => ({ name, count, pct: gerPct(count, items.length) }))
+        .sort((a, b) => b.count - a.count);
+
+    const zones = toRanking(zoneMap);
+    let topZoneCategory = null;
+    if (zones[0]) {
+        const entries = Object.entries(zoneCatMap[zones[0].name] || {}).sort((x, y) => y[1] - x[1]);
+        if (entries[0]) topZoneCategory = entries[0][0];
+    }
+
+    const slotTotal = slots.morning + slots.afternoon + slots.night;
+    let peakSlot = null;
+    if (slotTotal > 0) {
+        peakSlot = GER_SLOT_KEYS.reduce((best, key) => (slots[key] > slots[best] ? key : best), 'morning');
+    }
+
+    let heatMax = 0;
+    heat.forEach(row => GER_SLOT_KEYS.forEach(k => { heatMax = Math.max(heatMax, row[k]); }));
+
+    return { zones, topZoneCategory, categories: toRanking(catMap), slots, slotTotal, peakSlot, heat, heatMax, heatTotal };
+}
+
+function gerComputeAi(matches) {
+    const total = matches.length;
+    const scores = matches.map(m => gerNormScore(m.matchScore)).filter(s => s > 0);
+    const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+    const statusOf = (m) => String(m.status || '').toUpperCase();
+    const validated = matches.filter(m => statusOf(m) === 'VALIDATED').length;
+    const rejected = matches.filter(m => statusOf(m) === 'REJECTED').length;
+    const pending = matches.filter(m => statusOf(m) === 'POSSIBLE').length;
+    const decided = validated + rejected;
+    return {
+        total, avgScore, validated, rejected, pending, decided,
+        high: scores.filter(s => s >= 80).length,
+        precision: decided > 0 ? gerPct(validated, decided) : null
+    };
+}
+
+function gerComputeFunnel(current) {
+    const lostItems = current.filter(i => i.type === 'LOST');
+    const lostIds = new Set(lostItems.map(i => i.itemID));
+    const withMatch = new Set();
+    const validated = new Set();
+    const delivered = new Set();
+
+    (window.currentMatches || []).forEach(m => {
+        if (!lostIds.has(m.lostItemID)) return;
+        const st = String(m.status || '').toUpperCase();
+        if (st !== 'REJECTED') withMatch.add(m.lostItemID);
+        if (st === 'VALIDATED') validated.add(m.lostItemID);
+    });
+    lostItems.forEach(i => {
+        if (gerIsDelivered(i)) { delivered.add(i.itemID); validated.add(i.itemID); withMatch.add(i.itemID); }
+        else if (gerIsValidated(i)) { validated.add(i.itemID); withMatch.add(i.itemID); }
+    });
+
+    return [
+        { label: 'Pérdidas reportadas', count: lostItems.length, color: 'bg-sky-500' },
+        { label: 'Con coincidencia IA', count: withMatch.size, color: 'bg-indigo-500' },
+        { label: 'Validadas por seguridad', count: validated.size, color: 'bg-amber-500' },
+        { label: 'Entregadas al dueño', count: delivered.size, color: 'bg-emerald-500' }
+    ];
+}
+
+function gerComputeOperationalState(all) {
+    const matches = window.currentMatches || [];
+    const reserved = gerGetReservedFoundIds();
+    const statusOf = (m) => String(m.status || '').toUpperCase();
+    const matchedFound = new Set(matches.filter(m => statusOf(m) !== 'REJECTED' && m.foundItemID).map(m => m.foundItemID));
+
+    const foundActive = all.filter(i => i.type === 'FOUND' && !gerIsDelivered(i));
+    const lot = foundActive
+        .filter(i => !reserved.has(i.itemID) && calculateItemDaysInCustody(i) >= GER_DONATION_DAYS)
+        .sort((a, b) => calculateItemDaysInCustody(b) - calculateItemDaysInCustody(a));
+    const legal = lot.filter(i => calculateItemDaysInCustody(i) >= GER_LEGAL_DAYS);
+    const warning = foundActive.filter(i => {
+        const d = calculateItemDaysInCustody(i);
+        return !reserved.has(i.itemID) && d >= GER_WARNING_DAYS && d < GER_DONATION_DAYS;
+    });
+
+    const lostValidatedPending = all.filter(i => i.type === 'LOST' && gerIsValidated(i) && !gerIsDelivered(i)).length;
+    const reservedFoundPending = foundActive.filter(i => reserved.has(i.itemID)).length;
+    const matchesAvailable = matches.length > 0;
+
+    return {
+        lot, legal, warning,
+        pendingMatches: matches.filter(m => statusOf(m) === 'POSSIBLE').length,
+        awaitingPickup: Math.max(lostValidatedPending, reservedFoundPending),
+        unmatchedFound: matchesAvailable
+            ? foundActive.filter(i => !matchedFound.has(i.itemID) && !reserved.has(i.itemID) && calculateItemDaysInCustody(i) >= 7).length
+            : 0
+    };
+}
+
+// ----------------------------------------------------------------------------
+// Render: KPIs
+// ----------------------------------------------------------------------------
+function gerDeltaBadge(cur, prev, mode, goodDirection) {
+    if (prev === null || prev === undefined) return '';
+    let diff;
+    let text;
+    if (mode === 'pp') {
+        diff = Math.round(cur - prev);
+        text = `${diff > 0 ? '+' : ''}${diff} pp`;
+    } else if (prev === 0) {
+        if (cur === 0) return '';
+        diff = 1;
+        text = 'nuevo';
+    } else {
+        diff = Math.round(((cur - prev) / prev) * 100);
+        text = `${diff > 0 ? '+' : ''}${diff}%`;
+    }
+    const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '■';
+    let color = 'text-slate-500 dark:text-slate-400 bg-slate-500/10';
+    if (diff !== 0 && goodDirection) {
+        const good = (goodDirection === 'up') === (diff > 0);
+        color = good
+            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+            : 'text-rose-600 dark:text-rose-400 bg-rose-500/10';
+    }
+    return `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${color}">${arrow} ${text} <span class="font-medium opacity-70">vs. previo</span></span>`;
+}
+
+function renderGerenciaKpis(k, prevK, op) {
+    gerSetText('kpiTotalItems', k.total);
+    gerSetText('kpiTotalSub', `${k.lost} perdidos / ${k.found} hallazgos`);
+    gerSetHtml('kpiTotalDelta', prevK ? gerDeltaBadge(k.total, prevK.total, 'pct', null) : '');
+
+    gerSetText('kpiRecoveryRate', `${k.returnRate}%`);
+    gerSetText('kpiRecoverySub', k.found ? `${k.recovered} de ${k.found} hallazgos devueltos` : 'Sin hallazgos registrados');
+    gerSetHtml('kpiRecoveryDelta', prevK ? gerDeltaBadge(k.returnRate, prevK.returnRate, 'pp', 'up') : '');
+
+    gerSetText('kpiAvgDays', `${k.avgDays.toFixed(1)} d`);
+    gerSetText('kpiAvgDaysSub', 'Promedio hasta retiro');
+
+    gerSetText('kpiDonationEligible', op.lot.length);
+    gerSetText('kpiDonationSub', op.legal.length ? `${gerN(op.legal.length, 'supera', 'superan')} los 90 días` : 'Superan 30 días en almacén');
+
+    gerSetText('kpiEstimatedValue', gerMoney(k.protectedValue));
+    gerSetText('kpiValueSub', 'Impacto económico estimado');
+    gerSetHtml('kpiValueDelta', prevK ? gerDeltaBadge(k.protectedValue, prevK.protectedValue, 'pct', null) : '');
+}
+
+// ----------------------------------------------------------------------------
+// Render: resumen ejecutivo y acciones prioritarias
+// ----------------------------------------------------------------------------
+function renderInsights(ctx) {
+    const { k, a, op, ai, period } = ctx;
+    const periodLabel = period === '7D' ? 'los últimos 7 días' : period === '30D' ? 'los últimos 30 días' : 'todo el histórico';
+    const lines = [];
+
+    if (k.total === 0) {
+        lines.push({ icon: '📭', text: `No hay registros en ${periodLabel}. Cuando lleguen reportes y hallazgos, aquí aparecerá el resumen.` });
+    } else {
+        lines.push({ icon: '📊', text: `En ${periodLabel} se registraron ${k.total} casos (${k.lost} pérdidas reportadas y ${k.found} hallazgos). Se ${k.recovered === 1 ? 'devolvió' : 'devolvieron'} ${gerN(k.recovered, 'objeto', 'objetos')}: tasa de retorno del ${k.returnRate}%.` });
+
+        const topZone = a.zones[0];
+        const topCat = a.categories[0];
+        if (topZone) {
+            let text = `El ${topZone.pct}% de los incidentes se concentra en "${topZone.name}"`;
+            if (a.peakSlot) text += `, con mayor actividad en la franja de ${GER_SLOTS[a.peakSlot].label.toLowerCase()} (${GER_SLOTS[a.peakSlot].range})`;
+            text += topCat ? `. La categoría más frecuente es "${topCat.name}".` : '.';
+            lines.push({ icon: '📍', text });
+        }
+
+        if (k.inCustody > 0) {
+            let text = `Hay ${gerN(k.inCustody, 'objeto', 'objetos')} en custodia, con una permanencia promedio de ${k.avgDays.toFixed(1)} días`;
+            if (op.lot.length > 0) text += `; ${op.lot.length} ya ${op.lot.length === 1 ? 'cumple' : 'cumplen'} el plazo de donación`;
+            if (op.legal.length > 0) text += ` y ${op.legal.length} ${op.legal.length === 1 ? 'supera' : 'superan'} los 90 días`;
+            lines.push({ icon: '📦', text: `${text}.` });
+        }
+    }
+
+    if (ai.total > 0) {
+        let text = `El motor de coincidencias analizó ${gerN(ai.total, 'posible emparejamiento', 'posibles emparejamientos')} con un puntaje promedio de ${ai.avgScore}%`;
+        if (ai.precision !== null) text += ` y una precisión validada por el personal del ${ai.precision}%`;
+        lines.push({ icon: '🤖', text: `${text}.` });
+    }
+
+    if (op.pendingMatches > 0) {
+        lines.push({ icon: '⚡', text: `Acción sugerida: revisar ${gerN(op.pendingMatches, 'coincidencia pendiente', 'coincidencias pendientes')} para acelerar las devoluciones.` });
+    }
+
+    gerSetHtml('insightsContainer', lines.map(l => `
+        <li class="flex items-start gap-2.5">
+            <span class="text-sm leading-5 shrink-0">${l.icon}</span>
+            <span>${escapeHtml(l.text)}</span>
+        </li>
+    `).join(''));
+
+    window.gerenciaInsightsText = `RESUMEN EJECUTIVO — Lost & Found (${periodLabel})\n` + lines.map(l => `- ${l.text}`).join('\n');
+}
+
+function renderAlerts(op) {
+    const alerts = [];
+    if (op.legal.length) {
+        alerts.push({ tone: 'rose', icon: '🔴', title: `${gerN(op.legal.length, 'objeto supera', 'objetos superan')} los 90 días`, text: 'Corresponde disposición final / baja definitiva.', action: 'lot-legal', btn: 'Ver lote' });
+    }
+    const donationOnly = op.lot.length - op.legal.length;
+    if (donationOnly > 0) {
+        alerts.push({ tone: 'amber', icon: '🟡', title: `${gerN(donationOnly, 'objeto listo', 'objetos listos')} para donación`, text: 'Cumplen el plazo de 30 días sin ser reclamados.', action: 'lot-donation', btn: 'Ver lote' });
+    }
+    if (op.warning.length) {
+        alerts.push({ tone: 'sky', icon: '⏳', title: `${gerN(op.warning.length, 'objeto cerca', 'objetos cerca')} de los 30 días`, text: 'Tienen entre 20 y 29 días en almacén; aún se pueden reclamar.' });
+    }
+    if (op.pendingMatches) {
+        alerts.push({ tone: 'indigo', icon: '🔎', title: gerN(op.pendingMatches, 'coincidencia por revisar', 'coincidencias por revisar'), text: 'La IA propuso emparejamientos que esperan decisión del personal.', action: 'matches', btn: 'Revisar' });
+    }
+    if (op.awaitingPickup) {
+        alerts.push({ tone: 'emerald', icon: '🎫', title: `${gerN(op.awaitingPickup, 'validado esperando', 'validados esperando')} retiro`, text: 'El dueño ya fue identificado; falta la entrega en ventanilla.' });
+    }
+    if (op.unmatchedFound) {
+        alerts.push({ tone: 'slate', icon: '❔', title: gerN(op.unmatchedFound, 'hallazgo sin coincidencia', 'hallazgos sin coincidencia'), text: 'Llevan 7 días o más sin ningún reporte de pérdida asociado.' });
+    }
+
+    const toneClasses = {
+        rose: 'bg-rose-500/10 border-rose-500/25',
+        amber: 'bg-amber-500/10 border-amber-500/25',
+        sky: 'bg-sky-500/10 border-sky-500/25',
+        indigo: 'bg-indigo-500/10 border-indigo-500/25',
+        emerald: 'bg-emerald-500/10 border-emerald-500/25',
+        slate: 'bg-slate-500/10 border-slate-500/25'
+    };
+
+    if (alerts.length === 0) {
+        gerSetHtml('gerenciaAlertsContainer', `
+            <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-center">
+                <p class="font-bold text-emerald-600 dark:text-emerald-400">✓ Todo en orden</p>
+                <p class="theme-text-secondary mt-0.5">No hay acciones pendientes en este momento.</p>
+            </div>
+        `);
         return;
     }
 
-    const zoneCounts = {};
-    items.forEach(i => {
-        const zone = i.zone || 'Otra Zona...';
-        zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
-    });
+    gerSetHtml('gerenciaAlertsContainer', alerts.map(al => `
+        <div class="flex items-start justify-between gap-3 p-3 rounded-2xl border ${toneClasses[al.tone]}">
+            <div class="flex items-start gap-2.5 min-w-0">
+                <span class="text-sm leading-5 shrink-0">${al.icon}</span>
+                <div class="min-w-0">
+                    <p class="text-xs font-bold theme-text-primary">${escapeHtml(al.title)}</p>
+                    <p class="text-[11px] theme-text-secondary mt-0.5">${escapeHtml(al.text)}</p>
+                </div>
+            </div>
+            ${al.action ? `
+                <button type="button" data-ger-action="${al.action}" class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/70 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 theme-text-primary hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer">
+                    ${al.btn}
+                </button>` : ''}
+        </div>
+    `).join(''));
+}
 
-    const sortedZones = Object.entries(zoneCounts)
-        .map(([zone, count]) => ({ zone, count, percentage: Math.round((count / items.length) * 100) }))
-        .sort((a, b) => b.count - a.count);
+// ----------------------------------------------------------------------------
+// Render: puntos calientes, horarios, categorías
+// ----------------------------------------------------------------------------
+function renderHotspots(a, itemCount) {
+    const container = document.getElementById('hotspotsContainer');
+    if (!container) return;
 
-    container.innerHTML = sortedZones.map((item, index) => {
+    if (itemCount === 0) {
+        container.innerHTML = '<p class="text-xs theme-text-muted py-4 text-center">No hay registros suficientes para calcular puntos calientes.</p>';
+        gerSetText('hotspotRecommendationText', 'Aún no hay datos suficientes para generar una recomendación operativa.');
+        return;
+    }
+
+    const top = a.zones.slice(0, 6);
+    const rest = a.zones.slice(6);
+
+    container.innerHTML = top.map((item, index) => {
         let rankClass = 'hotspot-rank-other';
         let badgeColor = 'text-sky-600 bg-sky-500/10';
-        if (index === 0) {
-            rankClass = 'hotspot-rank-1';
-            badgeColor = 'text-rose-600 bg-rose-500/10 font-bold';
-        } else if (index === 1) {
-            rankClass = 'hotspot-rank-2';
-            badgeColor = 'text-amber-600 bg-amber-500/10 font-bold';
-        } else if (index === 2) {
-            rankClass = 'hotspot-rank-3';
-            badgeColor = 'text-amber-500 bg-amber-500/10';
-        }
+        if (index === 0) { rankClass = 'hotspot-rank-1'; badgeColor = 'text-rose-600 bg-rose-500/10 font-bold'; }
+        else if (index === 1) { rankClass = 'hotspot-rank-2'; badgeColor = 'text-amber-600 bg-amber-500/10 font-bold'; }
+        else if (index === 2) { rankClass = 'hotspot-rank-3'; badgeColor = 'text-amber-500 bg-amber-500/10'; }
 
         return `
             <div class="space-y-1">
                 <div class="flex items-center justify-between text-xs">
-                    <span class="font-medium theme-text-primary flex items-center gap-1.5">
-                        <span class="text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold ${badgeColor}">${index + 1}</span>
-                        ${escapeHtml(item.zone)}
+                    <span class="font-medium theme-text-primary flex items-center gap-1.5 min-w-0">
+                        <span class="text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shrink-0 ${badgeColor}">${index + 1}</span>
+                        <span class="truncate">${escapeHtml(item.name)}</span>
                     </span>
-                    <span class="font-mono text-[11px] theme-text-secondary font-semibold">
-                        ${item.count} casos (${item.percentage}%)
-                    </span>
+                    <span class="font-mono text-[11px] theme-text-secondary font-semibold shrink-0 ml-2">${item.count} casos (${item.pct}%)</span>
                 </div>
                 <div class="hotspot-bar-wrapper">
-                    <div class="hotspot-bar-fill ${rankClass}" style="width: ${Math.max(item.percentage, 5)}%"></div>
+                    <div class="hotspot-bar-fill ${rankClass}" style="width: ${Math.max(item.pct, 5)}%"></div>
                 </div>
             </div>
         `;
-    }).join('');
+    }).join('') + (rest.length
+        ? `<p class="text-[11px] theme-text-muted pt-1">+ ${gerN(rest.length, 'zona más', 'zonas más')} con ${gerN(rest.reduce((s, z) => s + z.count, 0), 'caso', 'casos')} en total</p>`
+        : '');
 
-    const topZone = sortedZones[0];
-    const recTextEl = document.getElementById('hotspotRecommendationText');
-    if (recTextEl && topZone) {
-        recTextEl.textContent = `Se detectó que el ${topZone.percentage}% de las pérdidas registradas se concentran en "${topZone.zone}". Se recomienda a la jefatura de seguridad asignar patrullaje preventivo durante horas de alta afluencia (13:00 - 16:00 hrs) y colocar avisos preventivos para visitantes en este sector.`;
+    // Recomendación dinámica según zona, franja y categoría dominantes
+    const z = a.zones[0];
+    const slot = a.peakSlot ? GER_SLOTS[a.peakSlot] : null;
+    const zoneCat = a.topZoneCategory;
+    let text;
+    if (z.pct >= 30) {
+        text = `Se detectó que el ${z.pct}% de los incidentes se concentra en "${z.name}". `;
+        text += slot
+            ? `La mayor actividad ocurre en la franja de ${slot.label.toLowerCase()} (${slot.range}). Se recomienda asignar patrullaje preventivo en ese horario y `
+            : 'Se recomienda asignar patrullaje preventivo y ';
+        text += 'colocar avisos preventivos para los visitantes en este sector';
+        text += zoneCat ? `, con énfasis en los objetos de categoría "${zoneCat}", la más frecuente allí.` : '.';
+    } else {
+        text = `Los incidentes están repartidos entre varias zonas; la principal, "${z.name}", concentra el ${z.pct}%. Se recomienda reforzar las campañas generales de prevención`;
+        text += slot ? ` y la presencia de seguridad en la franja de ${slot.label.toLowerCase()} (${slot.range}).` : '.';
     }
+    gerSetText('hotspotRecommendationText', text);
 }
 
-function renderTimeDistributionAndCategories(items) {
-    const timeContainer = document.getElementById('timeDistributionContainer');
-    const catContainer = document.getElementById('categoriesRankingContainer');
-
-    let morning = 0, afternoon = 0, night = 0;
-    items.forEach(i => {
-        const timeStr = String(i.time || '').toLowerCase();
-        let hour = -1;
-        const match = timeStr.match(/(\d{1,2}):/);
-        if (match) {
-            hour = parseInt(match[1], 10);
-            if (timeStr.includes('pm') && hour < 12) hour += 12;
-            if (timeStr.includes('am') && hour === 12) hour = 0;
-        } else if (i.createdAt) {
-            const d = new Date(i.createdAt);
-            if (!isNaN(d.getTime())) {
-                hour = d.getHours();
-            }
+function renderTimeAndCategories(a, itemCount) {
+    if (a.slotTotal === 0) {
+        gerSetHtml('timeDistributionContainer', '<p class="text-xs theme-text-muted py-2">Aún no hay registros con hora indicada.</p>');
+    } else {
+        let html = GER_SLOT_KEYS.map(key => {
+            const s = GER_SLOTS[key];
+            const c = a.slots[key];
+            const p = gerPct(c, a.slotTotal);
+            const isPeak = a.peakSlot === key;
+            return `
+                <div class="${isPeak ? 'p-2 rounded-xl bg-amber-500/10' : 'px-2 py-1'} space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span class="${isPeak ? 'font-bold text-amber-600 dark:text-amber-400' : 'theme-text-secondary'}">${s.icon} ${s.label} (${s.range})${isPeak ? ' · pico' : ''}</span>
+                        <span class="font-mono font-semibold ${isPeak ? 'text-amber-600 dark:text-amber-400' : 'theme-text-primary'}">${c} (${p}%)</span>
+                    </div>
+                    <div class="hotspot-bar-wrapper">
+                        <div class="hotspot-bar-fill ${isPeak ? 'hotspot-rank-2' : 'hotspot-rank-other'}" style="width: ${c > 0 ? Math.max(p, 4) : 0}%"></div>
+                    </div>
+                </div>`;
+        }).join('');
+        if (a.slots.unknown > 0) {
+            html += `<p class="text-[10px] theme-text-muted px-2 pt-1">${a.slots.unknown} registro(s) sin hora indicada no se incluyen en este cálculo.</p>`;
         }
-        if (hour >= 6 && hour < 13) morning++;
-        else if (hour >= 13 && hour < 19) afternoon++;
-        else night++;
+        gerSetHtml('timeDistributionContainer', html);
+    }
+
+    const topCats = a.categories.slice(0, 5);
+    gerSetHtml('categoriesRankingContainer', topCats.length
+        ? topCats.map((c, idx) => `
+            <div class="space-y-1">
+                <div class="flex items-center justify-between">
+                    <span class="theme-text-secondary truncate max-w-[200px]">${idx + 1}. ${escapeHtml(c.name)}</span>
+                    <span class="font-mono font-semibold theme-text-primary">${c.count} (${c.pct}%)</span>
+                </div>
+                <div class="hotspot-bar-wrapper"><div class="hotspot-bar-fill hotspot-rank-other" style="width: ${Math.max(c.pct, 4)}%"></div></div>
+            </div>`).join('')
+        : '<p class="text-xs theme-text-muted">Sin categorías registradas</p>');
+}
+
+// ----------------------------------------------------------------------------
+// Render: tendencia, embudo, mapa de calor semanal, rendimiento IA
+// ----------------------------------------------------------------------------
+function renderTrend(items, days) {
+    const container = document.getElementById('trendChartContainer');
+    if (!container) return;
+    const n = days || 30;
+    gerSetText('trendSubtitle', `Pérdidas reportadas vs. hallazgos registrados por día · últimos ${n} días`);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const buckets = Array.from({ length: n }, (_, idx) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (n - 1 - idx));
+        return { date: d, lost: 0, found: 0 };
     });
 
-    const total = items.length || 1;
-    if (timeContainer) {
-        timeContainer.innerHTML = `
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
-                <span class="theme-text-secondary flex items-center gap-1.5">☀️ Mañana (10:00 - 13:00)</span>
-                <span class="font-mono font-semibold theme-text-primary">${morning} (${Math.round((morning/total)*100)}%)</span>
-            </div>
-            <div class="flex items-center justify-between py-1.5 border-b border-slate-100 dark:border-slate-800 bg-amber-500/5 px-2 rounded-lg">
-                <span class="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">🔥 Tarde / Almuerzo (13:00 - 18:00)</span>
-                <span class="font-mono font-bold text-amber-600 dark:text-amber-400">${afternoon} (${Math.round((afternoon/total)*100)}%)</span>
-            </div>
-            <div class="flex items-center justify-between py-1.5">
-                <span class="theme-text-secondary flex items-center gap-1.5">🌙 Noche / Cines (18:00 - 22:00)</span>
-                <span class="font-mono font-semibold theme-text-primary">${night} (${Math.round((night/total)*100)}%)</span>
-            </div>
-        `;
-    }
+    items.forEach(i => {
+        const d = gerParseDate(i.createdAt || i.date);
+        if (!d) return;
+        const day = new Date(d);
+        day.setHours(0, 0, 0, 0);
+        const idx = Math.round((day.getTime() - today.getTime()) / GER_DAY_MS) + (n - 1);
+        if (idx < 0 || idx >= n) return;
+        if (i.type === 'FOUND') buckets[idx].found++; else buckets[idx].lost++;
+    });
 
-    if (catContainer) {
-        const catCounts = {};
-        items.forEach(i => {
-            const cat = i.category || 'Otros';
-            catCounts[cat] = (catCounts[cat] || 0) + 1;
-        });
-        const topCats = Object.entries(catCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 4);
-
-        catContainer.innerHTML = topCats.map(([cat, cnt]) => `
-            <div class="flex items-center justify-between py-1.5 border-b last:border-0 border-slate-100 dark:border-slate-800">
-                <span class="theme-text-secondary truncate max-w-[180px]">${escapeHtml(cat)}</span>
-                <span class="font-mono font-semibold theme-text-primary">${cnt} (${Math.round((cnt/total)*100)}%)</span>
-            </div>
-        `).join('') || '<p class="text-xs theme-text-muted">Sin categorías registradas</p>';
-    }
-}
-
-function renderDonationsTable(donationEligibleItems, allItems) {
-    const tbody = document.getElementById('donationsTableBody');
-    const badge = document.getElementById('donationsCounterBadge');
-    if (badge) {
-        badge.textContent = `${donationEligibleItems.length} objetos listos`;
-    }
-
-    window.gerenciaDonationLot = donationEligibleItems;
-
-    if (!tbody) return;
-
-    if (donationEligibleItems.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" class="p-8 text-center theme-text-muted text-xs">
-                    <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 mb-2">
-                        <i data-lucide="check" class="w-5 h-5"></i>
-                    </div>
-                    <p class="font-semibold theme-text-primary">Inventario de Almacén al Día</p>
-                    <p class="text-[11px] mt-0.5">Actualmente ningún objeto en custodia supera los 30 días reglamentarios sin reclamar.</p>
-                </td>
-            </tr>
-        `;
+    const max = Math.max(1, ...buckets.map(b => Math.max(b.lost, b.found)));
+    const totalShown = buckets.reduce((s, b) => s + b.lost + b.found, 0);
+    if (totalShown === 0) {
+        container.innerHTML = '<p class="text-xs theme-text-muted py-10 text-center">No hay registros en los últimos días para graficar.</p>';
         return;
     }
 
-    tbody.innerHTML = donationEligibleItems.map((item) => {
+    const labelEvery = n <= 7 ? 1 : n <= 14 ? 2 : 5;
+    const fmt = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    container.innerHTML = `
+        <div class="flex items-end gap-1 h-36 border-b border-slate-200 dark:border-slate-700 pb-0.5">
+            ${buckets.map(b => `
+                <div class="flex-1 min-w-0 h-full flex items-end justify-center gap-px" title="${fmt(b.date)} · ${b.lost} perdidos, ${b.found} hallazgos">
+                    <div class="ger-trend-bar bg-sky-500 w-full max-w-[10px]" style="height: ${b.lost ? Math.max((b.lost / max) * 100, 4) : 0}%"></div>
+                    <div class="ger-trend-bar bg-emerald-500 w-full max-w-[10px]" style="height: ${b.found ? Math.max((b.found / max) * 100, 4) : 0}%"></div>
+                </div>`).join('')}
+        </div>
+        <div class="flex gap-1 mt-1.5">
+            ${buckets.map((b, idx) => `<div class="flex-1 min-w-0 text-center text-[9px] theme-text-muted">${(n - 1 - idx) % labelEvery === 0 ? fmt(b.date) : ''}</div>`).join('')}
+        </div>
+        <p class="text-[10px] theme-text-muted mt-2">Máximo diario: ${max} registro(s). Pasa el cursor sobre cada barra para ver el detalle.</p>
+    `;
+}
+
+function renderFunnel(current) {
+    const stages = gerComputeFunnel(current);
+    const base = stages[0].count;
+    if (base === 0) {
+        gerSetHtml('funnelContainer', '<p class="text-xs theme-text-muted py-6 text-center">Aún no hay pérdidas reportadas en este período.</p>');
+        return;
+    }
+    gerSetHtml('funnelContainer', stages.map((s, idx) => {
+        const pctOfBase = gerPct(s.count, base);
+        const step = idx > 0 ? gerPct(s.count, stages[idx - 1].count) : null;
+        return `
+            <div class="space-y-1">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="theme-text-primary font-medium">${s.label}</span>
+                    <span class="font-mono font-semibold theme-text-primary">${s.count} <span class="theme-text-muted font-normal">(${pctOfBase}%)</span></span>
+                </div>
+                <div class="hotspot-bar-wrapper" style="height: 11px;">
+                    <div class="ger-funnel-fill ${s.color}" style="width: ${s.count > 0 ? Math.max(pctOfBase, 3) : 0}%"></div>
+                </div>
+                ${step !== null ? `<p class="text-[10px] theme-text-muted">${step}% avanza desde la etapa anterior</p>` : ''}
+            </div>`;
+    }).join(''));
+}
+
+function renderWeekdayHeatmap(a) {
+    const container = document.getElementById('weekdayHeatmapContainer');
+    if (!container) return;
+    if (a.heatTotal === 0) {
+        container.innerHTML = '<p class="text-xs theme-text-muted py-8 text-center">Aún no hay registros con fecha y hora para construir el mapa de calor.</p>';
+        return;
+    }
+
+    let peak = { day: 0, slot: 'morning', count: -1 };
+    a.heat.forEach((row, dayIdx) => GER_SLOT_KEYS.forEach(k => {
+        if (row[k] > peak.count) peak = { day: dayIdx, slot: k, count: row[k] };
+    }));
+
+    const header = `
+        <div></div>
+        ${GER_SLOT_KEYS.map(k => `<div class="text-center text-[10px] font-bold theme-text-secondary">${GER_SLOTS[k].icon} ${GER_SLOTS[k].label}<br><span class="font-normal theme-text-muted">${GER_SLOTS[k].range}</span></div>`).join('')}
+    `;
+    const rows = a.heat.map((row, dayIdx) => `
+        <div class="text-[11px] font-bold theme-text-secondary flex items-center">${GER_WEEKDAYS[dayIdx]}</div>
+        ${GER_SLOT_KEYS.map(k => {
+            const c = row[k];
+            const alpha = a.heatMax > 0 ? (c / a.heatMax) : 0;
+            const isPeak = c > 0 && peak.day === dayIdx && peak.slot === k;
+            return `<div class="ger-heat-cell ${isPeak ? 'ger-heat-peak' : ''}" style="background: rgba(244, 63, 94, ${c ? (0.12 + alpha * 0.7).toFixed(2) : 0.05}); color: ${alpha > 0.55 ? '#ffffff' : 'inherit'};" title="${GER_WEEKDAYS[dayIdx]} · ${GER_SLOTS[k].label}: ${c} caso(s)">${c || '·'}</div>`;
+        }).join('')}
+    `).join('');
+
+    container.innerHTML = `
+        <div class="grid gap-1.5" style="grid-template-columns: 44px repeat(3, minmax(0, 1fr));">
+            ${header}
+            ${rows}
+        </div>
+        <p class="text-[11px] theme-text-secondary mt-3">
+            Momento más crítico: <strong class="theme-text-primary">${GER_WEEKDAYS[peak.day]} por la ${GER_SLOTS[peak.slot].label.toLowerCase()}</strong> con ${peak.count} caso(s).
+        </p>
+    `;
+}
+
+function renderAiPerformance(ai) {
+    const container = document.getElementById('aiPerformanceContainer');
+    if (!container) return;
+    if (ai.total === 0) {
+        container.innerHTML = '<p class="text-xs theme-text-muted py-8 text-center">Todavía no hay coincidencias generadas por la IA para este período.</p>';
+        return;
+    }
+    const pV = gerPct(ai.validated, ai.total);
+    const pR = gerPct(ai.rejected, ai.total);
+    const pP = Math.max(0, 100 - pV - pR);
+
+    const stat = (label, value, sub) => `
+        <div class="p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <p class="text-[10px] font-bold uppercase tracking-wider theme-text-muted">${label}</p>
+            <p class="text-xl font-extrabold font-heading theme-text-primary mt-0.5">${value}</p>
+            <p class="text-[10px] theme-text-muted">${sub}</p>
+        </div>`;
+
+    container.innerHTML = `
+        <div class="grid grid-cols-2 gap-2.5">
+            ${stat('Coincidencias', ai.total, `${ai.high} con puntaje ≥ 80%`)}
+            ${stat('Puntaje promedio', `${ai.avgScore}%`, 'Similitud estimada por Bedrock')}
+            ${stat('Precisión validada', ai.precision !== null ? `${ai.precision}%` : '—', ai.decided ? `${ai.validated} validadas de ${ai.decided} resueltas` : 'Sin decisiones del personal aún')}
+            ${stat('Por revisar', ai.pending, 'Esperan decisión del staff')}
+        </div>
+        <div class="mt-3.5">
+            <div class="flex h-2.5 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                <div class="bg-emerald-500" style="width: ${pV}%" title="Validadas"></div>
+                <div class="bg-rose-500" style="width: ${pR}%" title="Rechazadas"></div>
+                <div class="bg-amber-400" style="width: ${pP}%" title="Pendientes"></div>
+            </div>
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[10px] theme-text-secondary">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Validadas ${ai.validated}</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Rechazadas ${ai.rejected}</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400"></span> Pendientes ${ai.pending}</span>
+            </div>
+        </div>
+    `;
+}
+
+// ----------------------------------------------------------------------------
+// Render principal del dashboard
+// ----------------------------------------------------------------------------
+function renderGerenciaDashboard() {
+    const { all, period, days, current, previous } = gerGetScopedData();
+
+    const k = gerComputeKpis(current);
+    const prevK = previous ? gerComputeKpis(previous) : null;
+    const a = gerComputeAnalytics(current);
+    const op = gerComputeOperationalState(all);
+    const ai = gerComputeAi(gerGetScopedMatches(current, period));
+
+    renderGerenciaKpis(k, prevK, op);
+    renderInsights({ k, a, op, ai, period });
+    renderAlerts(op);
+    renderHotspots(a, current.length);
+    renderTimeAndCategories(a, current.length);
+    renderTrend(current, days);
+    renderFunnel(current);
+    renderWeekdayHeatmap(a);
+    renderAiPerformance(ai);
+    renderDonationsTable(op.lot);
+
+    if (window.lastSyncAt) {
+        const t = new Date(window.lastSyncAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+        gerSetText('gerenciaLastSync', `● Actualizado ${t}`);
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// ----------------------------------------------------------------------------
+// Tabla de custodia y donaciones (filtros + selección)
+// ----------------------------------------------------------------------------
+function gerGetFilteredLot() {
+    const lot = window.gerenciaDonationLot || [];
+    const f = window.gerenciaDonationFilter;
+    if (f === 'D30') return lot.filter(i => calculateItemDaysInCustody(i) < GER_LEGAL_DAYS);
+    if (f === 'D90') return lot.filter(i => calculateItemDaysInCustody(i) >= GER_LEGAL_DAYS);
+    return lot;
+}
+
+function gerUpdateLotActaButton() {
+    const selected = window.gerenciaSelectedIds.size;
+    const label = selected > 0
+        ? `Emitir acta de seleccionados (${selected})`
+        : `Emitir Acta Oficial del Lote (${gerGetFilteredLot().length})`;
+    gerSetText('lotActaLabel', label);
+}
+
+function renderDonationsTable(lot) {
+    window.gerenciaDonationLot = lot;
+
+    // Limpiar selecciones de objetos que ya no están en el lote
+    const validIds = new Set(lot.map(i => i.itemID));
+    window.gerenciaSelectedIds.forEach(id => { if (!validIds.has(id)) window.gerenciaSelectedIds.delete(id); });
+
+    const legalCount = lot.filter(i => calculateItemDaysInCustody(i) >= GER_LEGAL_DAYS).length;
+    const donationCount = lot.length - legalCount;
+    gerSetText('donationsCounterBadge', `${lot.length} objeto${lot.length === 1 ? '' : 's'} listo${lot.length === 1 ? '' : 's'}`);
+
+    const chip = (key, label, count) => {
+        const active = window.gerenciaDonationFilter === key;
+        return `<button type="button" data-filter="${key}" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${active
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'theme-text-secondary border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'}">${label} (${count})</button>`;
+    };
+    gerSetHtml('donationFilterChips', chip('ALL', 'Todos', lot.length) + chip('D30', '🟡 Donación', donationCount) + chip('D90', '🔴 Plazo legal', legalCount));
+
+    const lotValue = lot.reduce((s, i) => s + getCategoryEstimatedValue(i.category), 0);
+    gerSetText('donationsSummary', lot.length ? `Valor referencial del lote: ${gerMoney(lotValue)}` : '');
+
+    const tbody = document.getElementById('donationsTableBody');
+    if (!tbody) return;
+
+    const visible = gerGetFilteredLot();
+    const selectAll = document.getElementById('selectAllDonations');
+
+    if (visible.length === 0) {
+        const emptyAll = lot.length === 0;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="p-8 text-center theme-text-muted text-xs">
+                    <div class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 mb-2">
+                        <i data-lucide="check" class="w-5 h-5"></i>
+                    </div>
+                    <p class="font-semibold theme-text-primary">${emptyAll ? 'Inventario de Almacén al Día' : 'Sin objetos en esta categoría'}</p>
+                    <p class="text-[11px] mt-0.5">${emptyAll ? 'Actualmente ningún objeto en custodia supera los 30 días reglamentarios sin reclamar.' : 'Cambia el filtro para ver otros objetos del lote.'}</p>
+                </td>
+            </tr>`;
+        if (selectAll) { selectAll.checked = false; selectAll.disabled = true; }
+        gerUpdateLotActaButton();
+        return;
+    }
+
+    if (selectAll) {
+        selectAll.disabled = false;
+        selectAll.checked = visible.every(i => window.gerenciaSelectedIds.has(i.itemID));
+    }
+
+    tbody.innerHTML = visible.map((item) => {
         const days = calculateItemDaysInCustody(item);
-        const isCritical90 = days >= 90;
-        const legalBadge = isCritical90
-            ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">🔴 Plazo Legal (&gt;90d)</span>'
-            : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">🟡 Donación (&gt;30d)</span>';
+        const isCritical = days >= GER_LEGAL_DAYS;
+        const legalBadge = isCritical
+            ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 whitespace-nowrap">🔴 Plazo Legal (&gt;90d)</span>'
+            : '<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap">🟡 Donación (&gt;30d)</span>';
+        const checked = window.gerenciaSelectedIds.has(item.itemID) ? 'checked' : '';
 
         return `
             <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
+                <td class="p-3"><input type="checkbox" class="row-check accent-indigo-600 cursor-pointer" data-item-id="${escapeHtml(item.itemID)}" ${checked} aria-label="Seleccionar ${escapeHtml(item.title)}"></td>
                 <td class="p-3 font-mono text-[11px] theme-text-primary font-bold">${escapeHtml(item.pickupCode || item.itemID?.slice(0, 8) || 'S/C')}</td>
                 <td class="p-3">
                     <span class="font-bold theme-text-primary">${escapeHtml(item.title)}</span>
@@ -1298,29 +1874,47 @@ function renderDonationsTable(donationEligibleItems, allItems) {
                 </td>
                 <td class="p-3 theme-text-secondary">${escapeHtml(item.category)}</td>
                 <td class="p-3 theme-text-secondary">${escapeHtml(item.zone)}</td>
-                <td class="p-3 theme-text-muted">${formatDate(item.createdAt || item.date)}</td>
-                <td class="p-3 text-center font-mono font-bold ${isCritical90 ? 'text-rose-600' : 'text-amber-600'}">${days} d</td>
+                <td class="p-3 theme-text-muted whitespace-nowrap">${formatDate(item.createdAt || item.date)}</td>
+                <td class="p-3 text-center font-mono font-bold ${isCritical ? 'text-rose-600' : 'text-amber-600'}">${days} d</td>
                 <td class="p-3">${legalBadge}</td>
                 <td class="p-3 text-right">
-                    <button
-                        type="button"
-                        class="btn-single-acta px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
-                        data-item-id="${escapeHtml(item.itemID)}"
-                    >
+                    <button type="button" class="btn-single-acta px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer whitespace-nowrap" data-item-id="${escapeHtml(item.itemID)}">
                         Ver en Acta
                     </button>
                 </td>
-            </tr>
-        `;
+            </tr>`;
     }).join('');
 
-    document.querySelectorAll('.btn-single-acta').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const id = btn.dataset.itemId;
-            const single = window.gerenciaDonationLot.filter(i => i.itemID === id);
-            openDonationModal(single);
-        });
-    });
+    gerUpdateLotActaButton();
+}
+
+// ----------------------------------------------------------------------------
+// Acta oficial de donación
+// ----------------------------------------------------------------------------
+function gerFolioKey() {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return { ym, key: `lf_acta_seq_${ym}` };
+}
+
+// El folio solo avanza al imprimir; abrir y cerrar el acta no consume números.
+function gerPeekFolio() {
+    const { ym, key } = gerFolioKey();
+    let seq = 1;
+    try { seq = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1; }
+    catch { seq = Math.floor(Math.random() * 900) + 100; }
+    return `ACTA-DON-${ym}-${String(seq).padStart(3, '0')}`;
+}
+
+function gerCommitFolio() {
+    const { key } = gerFolioKey();
+    try { localStorage.setItem(key, String((parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1)); }
+    catch { /* sin almacenamiento disponible: el folio simplemente no avanza */ }
+}
+
+function gerUpdateActaEntity() {
+    const value = (document.getElementById('actaEntityInput')?.value || '').trim();
+    gerSetText('actaEntityName', value || '[Entidad receptora por definir]');
 }
 
 function openDonationModal(itemsToInclude = null) {
@@ -1328,24 +1922,20 @@ function openDonationModal(itemsToInclude = null) {
     if (!modal) return;
 
     const items = itemsToInclude && itemsToInclude.length > 0 ? itemsToInclude : (window.gerenciaDonationLot || []);
-    
-    const folioEl = document.getElementById('actaFolio');
-    const dateEl = document.getElementById('actaDate');
-    const authorizedEl = document.getElementById('actaAuthorizedBy');
 
     const now = new Date();
-    const folioNumber = `ACTA-DON-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
-    
-    if (folioEl) folioEl.textContent = folioNumber;
-    if (dateEl) dateEl.textContent = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    if (authorizedEl) authorizedEl.textContent = window.currentUserData?.email || 'Gerencia General de Operaciones';
+    const folio = gerPeekFolio();
+    gerSetText('actaFolio', folio);
+    gerSetText('actaFolioFooter', folio);
+    gerSetText('actaDate', now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }));
+    gerSetText('actaAuthorizedBy', window.currentUserData?.email || 'Gerencia General de Operaciones');
+    gerUpdateActaEntity();
 
     const tbody = document.getElementById('actaItemsTableBody');
     if (tbody) {
-        if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-xs theme-text-muted">No hay artículos seleccionados para esta acta.</td></tr>';
-        } else {
-            tbody.innerHTML = items.map((it, idx) => `
+        tbody.innerHTML = items.length === 0
+            ? '<tr><td colspan="6" class="p-4 text-center text-xs theme-text-muted">No hay artículos seleccionados para esta acta.</td></tr>'
+            : items.map((it, idx) => `
                 <tr class="border-b border-slate-100 dark:border-slate-800">
                     <td class="p-2.5 font-mono text-[10px]">${idx + 1}</td>
                     <td class="p-2.5 font-mono font-bold text-[11px]">${escapeHtml(it.pickupCode || it.itemID?.slice(0, 8) || 'S/C')}</td>
@@ -1353,10 +1943,13 @@ function openDonationModal(itemsToInclude = null) {
                     <td class="p-2.5">${escapeHtml(it.category)}</td>
                     <td class="p-2.5">${escapeHtml(it.zone)}</td>
                     <td class="p-2.5 text-center font-mono font-bold">${calculateItemDaysInCustody(it)} días</td>
-                </tr>
-            `).join('');
-        }
+                </tr>`).join('');
     }
+
+    const totalValue = items.reduce((s, i) => s + getCategoryEstimatedValue(i.category), 0);
+    gerSetText('actaTotals', items.length
+        ? `Total: ${items.length} bien${items.length === 1 ? '' : 'es'} · Valor referencial estimado: ${gerMoney(totalValue)}`
+        : '');
 
     modal.classList.remove('hidden');
     if (window.lucide) lucide.createIcons();
@@ -1366,44 +1959,174 @@ function closeDonationModal() {
     document.getElementById('donationModal')?.classList.add('hidden');
 }
 
+// ----------------------------------------------------------------------------
+// Exportación CSV (respeta el período seleccionado)
+// ----------------------------------------------------------------------------
+function gerCsvCell(value) {
+    let s = String(value ?? '');
+    // Evita inyección de fórmulas al abrir en Excel
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+    return `"${s.replaceAll('"', '""')}"`;
+}
+
+function gerLegalStatus(item, reserved) {
+    if (item.type !== 'FOUND') return 'N/A';
+    if (gerIsDelivered(item)) return 'ENTREGADO';
+    if (reserved.has(item.itemID)) return 'VALIDADO_PENDIENTE_RETIRO';
+    const days = calculateItemDaysInCustody(item);
+    if (days >= GER_LEGAL_DAYS) return 'PLAZO_LEGAL_90D';
+    if (days >= GER_DONATION_DAYS) return 'DONACION_30D';
+    return 'EN_PLAZO';
+}
+
 function exportGerenciaCsv() {
-    const items = window.currentItems || [];
-    if (items.length === 0) {
-        alert('No hay datos disponibles para exportar.');
+    const { current, period } = gerGetScopedData();
+    if (current.length === 0) {
+        alert('No hay datos disponibles para exportar en el período seleccionado.');
         return;
     }
 
-    const headers = ['ID', 'Codigo_Retiro', 'Tipo', 'Titulo', 'Categoria', 'Zona', 'Fecha', 'Hora', 'Estado', 'Dias_Custodia', 'Valor_Estimado_PEN', 'Reportado_Por'];
+    const reserved = gerGetReservedFoundIds();
+    const headers = ['ID', 'Codigo_Retiro', 'Tipo', 'Titulo', 'Categoria', 'Zona', 'Fecha', 'Hora', 'Estado', 'Estado_Legal', 'Dias_Custodia', 'Valor_Estimado_PEN', 'Reportado_Por'];
 
-    const rows = items.map(i => {
-        const days = calculateItemDaysInCustody(i);
-        const valuePen = getCategoryEstimatedValue(i.category);
-        return [
-            `"${(i.itemID || '').replaceAll('"', '""')}"`,
-            `"${(i.pickupCode || '').replaceAll('"', '""')}"`,
-            `"${(i.type || '').replaceAll('"', '""')}"`,
-            `"${(i.title || '').replaceAll('"', '""')}"`,
-            `"${(i.category || '').replaceAll('"', '""')}"`,
-            `"${(i.zone || '').replaceAll('"', '""')}"`,
-            `"${(i.date || '').replaceAll('"', '""')}"`,
-            `"${(i.time || '').replaceAll('"', '""')}"`,
-            `"${(i.status || '').replaceAll('"', '""')}"`,
-            days,
-            valuePen,
-            `"${(i.createdBy || '').replaceAll('"', '""')}"`
-        ].join(';');
-    });
+    const rows = current.map(i => [
+        gerCsvCell(i.itemID),
+        gerCsvCell(i.pickupCode),
+        gerCsvCell(i.type),
+        gerCsvCell(i.title),
+        gerCsvCell(i.category),
+        gerCsvCell(i.zone),
+        gerCsvCell(i.date),
+        gerCsvCell(i.time),
+        gerCsvCell(i.status),
+        gerCsvCell(gerLegalStatus(i, reserved)),
+        calculateItemDaysInCustody(i),
+        getCategoryEstimatedValue(i.category),
+        gerCsvCell(i.createdBy)
+    ].join(';'));
 
     const csvContent = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
+    const suffix = period === 'ALL' ? 'historico' : period.toLowerCase();
     link.setAttribute('href', url);
-    link.setAttribute('download', `reporte_gerencial_lost_found_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `reporte_gerencial_lost_found_${suffix}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+}
+
+// ----------------------------------------------------------------------------
+// Controles del panel (se enlazan una sola vez)
+// ----------------------------------------------------------------------------
+function gerOpenLotWithFilter(filter) {
+    window.gerenciaDonationFilter = filter;
+    window.gerenciaSelectedIds.clear();
+    renderDonationsTable(window.gerenciaDonationLot || []);
+    if (window.lucide) lucide.createIcons();
+    document.getElementById('donationsSection')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function initGerenciaControls() {
+    const view = document.getElementById('gerenciaView');
+    if (!view || view.dataset.gerBound === '1') return;
+    view.dataset.gerBound = '1';
+
+    document.getElementById('gerenciaPeriodFilter')?.addEventListener('change', () => renderGerenciaDashboard());
+    document.getElementById('btnExportCsv')?.addEventListener('click', exportGerenciaCsv);
+    document.getElementById('btnOpenDonationModal')?.addEventListener('click', () => openDonationModal());
+
+    document.getElementById('btnGerenciaRefresh')?.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.classList.add('opacity-60');
+        try { await loadData(); }
+        finally {
+            btn.disabled = false;
+            btn.classList.remove('opacity-60');
+        }
+    });
+
+    document.getElementById('btnCopyInsights')?.addEventListener('click', async () => {
+        const label = document.getElementById('btnCopyInsightsLabel');
+        try {
+            await navigator.clipboard.writeText(window.gerenciaInsightsText || '');
+            if (label) label.textContent = '¡Copiado!';
+        } catch {
+            if (label) label.textContent = 'No se pudo copiar';
+        }
+        setTimeout(() => { if (label) label.textContent = 'Copiar'; }, 1800);
+    });
+
+    // Acciones prioritarias
+    document.getElementById('gerenciaAlertsContainer')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-ger-action]');
+        if (!btn) return;
+        const action = btn.dataset.gerAction;
+        if (action === 'lot-legal') gerOpenLotWithFilter('D90');
+        else if (action === 'lot-donation') gerOpenLotWithFilter('D30');
+        else if (action === 'matches' && typeof activateMatchesTab === 'function') activateMatchesTab();
+    });
+
+    // Filtros de la tabla de donaciones
+    document.getElementById('donationFilterChips')?.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-filter]');
+        if (!btn) return;
+        window.gerenciaDonationFilter = btn.dataset.filter;
+        renderDonationsTable(window.gerenciaDonationLot || []);
+        if (window.lucide) lucide.createIcons();
+    });
+
+    // Selección y acta individual (delegado sobre el cuerpo de la tabla)
+    const tbody = document.getElementById('donationsTableBody');
+    tbody?.addEventListener('change', (e) => {
+        const cb = e.target.closest('.row-check');
+        if (!cb) return;
+        if (cb.checked) window.gerenciaSelectedIds.add(cb.dataset.itemId);
+        else window.gerenciaSelectedIds.delete(cb.dataset.itemId);
+        const selectAll = document.getElementById('selectAllDonations');
+        if (selectAll) selectAll.checked = gerGetFilteredLot().every(i => window.gerenciaSelectedIds.has(i.itemID));
+        gerUpdateLotActaButton();
+    });
+    tbody?.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-single-acta');
+        if (!btn) return;
+        const single = (window.gerenciaDonationLot || []).filter(i => i.itemID === btn.dataset.itemId);
+        openDonationModal(single);
+    });
+
+    document.getElementById('selectAllDonations')?.addEventListener('change', (e) => {
+        gerGetFilteredLot().forEach(i => {
+            if (e.target.checked) window.gerenciaSelectedIds.add(i.itemID);
+            else window.gerenciaSelectedIds.delete(i.itemID);
+        });
+        renderDonationsTable(window.gerenciaDonationLot || []);
+    });
+
+    document.getElementById('btnGenerateFullLotActa')?.addEventListener('click', () => {
+        const lot = window.gerenciaDonationLot || [];
+        const target = window.gerenciaSelectedIds.size > 0
+            ? lot.filter(i => window.gerenciaSelectedIds.has(i.itemID))
+            : gerGetFilteredLot();
+        openDonationModal(target);
+    });
+
+    // Modal del acta
+    const modal = document.getElementById('donationModal');
+    document.getElementById('closeDonationModal')?.addEventListener('click', closeDonationModal);
+    document.getElementById('btnCloseDonationModalBtn')?.addEventListener('click', closeDonationModal);
+    modal?.addEventListener('click', (e) => { if (e.target === modal) closeDonationModal(); });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) closeDonationModal();
+    });
+    document.getElementById('actaEntityInput')?.addEventListener('input', gerUpdateActaEntity);
+    document.getElementById('btnPrintActa')?.addEventListener('click', () => {
+        gerUpdateActaEntity();
+        gerCommitFolio();
+        window.print();
+    });
 }
 
 // ============================================================================
@@ -3076,7 +3799,7 @@ document.addEventListener('DOMContentLoaded', () => {
             this.classList.add('active');
             window.currentFilter = this.dataset.filter || 'ALL';
             
-            // --- Buscador de entrega disponible para Staff en Reportes Generales ---
+            // Mantener visible el buscador de entrega para Staff
             const searchSection = document.getElementById('staffSearchSection');
             if (searchSection && window.currentUserIsStaff) {
                 searchSection.classList.remove('hidden');
@@ -3286,38 +4009,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (tabMatches) tabMatches.addEventListener('click', activateMatchesTab);
     if (tabGerencia) tabGerencia.addEventListener('click', activateGerenciaTab);
 
-    // Controles del Panel de Gerencia
-    const gerenciaPeriodFilter = document.getElementById('gerenciaPeriodFilter');
-    if (gerenciaPeriodFilter) {
-        gerenciaPeriodFilter.addEventListener('change', () => renderGerenciaDashboard());
-    }
-
-    const btnExportCsv = document.getElementById('btnExportCsv');
-    if (btnExportCsv) {
-        btnExportCsv.addEventListener('click', exportGerenciaCsv);
-    }
-
-    const btnOpenDonationModal = document.getElementById('btnOpenDonationModal');
-    if (btnOpenDonationModal) {
-        btnOpenDonationModal.addEventListener('click', () => openDonationModal());
-    }
-
-    const btnGenerateFullLotActa = document.getElementById('btnGenerateFullLotActa');
-    if (btnGenerateFullLotActa) {
-        btnGenerateFullLotActa.addEventListener('click', () => openDonationModal());
-    }
-
-    const closeDonationModalBtn = document.getElementById('closeDonationModal');
-    const btnCloseDonationModalBtn = document.getElementById('btnCloseDonationModalBtn');
-    if (closeDonationModalBtn) closeDonationModalBtn.addEventListener('click', closeDonationModal);
-    if (btnCloseDonationModalBtn) btnCloseDonationModalBtn.addEventListener('click', closeDonationModal);
-
-    const btnPrintActa = document.getElementById('btnPrintActa');
-    if (btnPrintActa) {
-        btnPrintActa.addEventListener('click', () => {
-            window.print();
-        });
-    }
+    // Controles del Panel de Gerencia (filtros, tabla, acta, CSV)
+    initGerenciaControls();
 
     // RoleBadge click para acceso directo a Gerencia
     const roleBadge = document.getElementById('roleBadge');
@@ -3342,6 +4035,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchCodeResult = document.getElementById('searchCodeResult');
 
     if (searchCodeBtn && pickupCodeInput && searchCodeResult) {
+        pickupCodeInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                searchCodeBtn.click();
+            }
+        });
+
         searchCodeBtn.addEventListener('click', () => {
             const code = pickupCodeInput.value.trim().toUpperCase();
             if (!code) {
@@ -3349,7 +4048,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Búsqueda ultrarrápida en memoria: por código de retiro o ID de reporte
+            // Búsqueda ultrarrápida en memoria (sin llamar a la API) por código de retiro o por ID
             const item = window.currentItems.find(i => {
                 const pCode = (i.pickupCode || '').trim().toUpperCase();
                 const itId = (i.itemID || '').trim().toUpperCase();
@@ -3440,12 +4139,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.innerHTML = '✓ Entregar Objeto';
                     }
                 });
-            }
-        });
-        
-        pickupCodeInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
-                searchCodeBtn.click();
             }
         });
     }
