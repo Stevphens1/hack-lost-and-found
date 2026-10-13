@@ -18,11 +18,9 @@ Plataforma Serverless en **Amazon Web Services (AWS)** diseñada para centros co
 
 ## 🏗️ Arquitectura en AWS
 
+
 <img width="1600" height="1410" alt="Arq - copia" src="https://github.com/user-attachments/assets/09e0d64e-f4da-4f3b-9737-3c43408a3a88" />
 
-```
-
-```
 
 ---
 
