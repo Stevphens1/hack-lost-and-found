@@ -19,20 +19,7 @@ Plataforma Serverless en **Amazon Web Services (AWS)** diseñada para centros co
 ## 🏗️ Arquitectura en AWS
 
 ```
-[ Visitante / Staff ]
-         │
-         ▼
-[ Amazon CloudFront & S3 (Web Hosting) ]
-         │
-         ▼
-[ Amazon Cognito User Pool ] ───▶ [ Amazon API Gateway (REST API) ]
-                                          │
-    ┌───────────────────────────┬─────────┴───────────────┬─────────────────────────┐
-    ▼                           ▼                         ▼                         ▼
-[ PresignedUrlLambda ]    [ ItemsHandlerLambda ]   [ MatchmakingLambda ]   [ ValidateLambda ]
-    │                           │                         │                         │
-    ▼                           ▼                         ▼                         ▼
-[ Amazon S3 (Media) ]     [ Amazon DynamoDB ]      [ Amazon DynamoDB ]      [ Amazon SES ]
+<img width="1600" height="1410" alt="Arq" src="https://github.com/user-attachments/assets/5066f71a-442b-481d-b795-675a75abbc8a" />
 ```
 
 ---
