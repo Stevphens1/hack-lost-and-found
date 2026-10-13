@@ -2127,6 +2127,52 @@ function initGerenciaControls() {
         gerCommitFolio();
         window.print();
     });
+
+    // Inicializar cargadores de fotos de firmas digitales
+    initSignatureUploaders();
+}
+
+function initSignatureUploaders() {
+    const configs = [
+        { inputId: 'signGerenciaInput', imgId: 'signGerenciaImg', phId: 'signGerenciaPlaceholder', rmId: 'signGerenciaRemove' },
+        { inputId: 'signSeguridadInput', imgId: 'signSeguridadImg', phId: 'signSeguridadPlaceholder', rmId: 'signSeguridadRemove' },
+        { inputId: 'signEntidadInput', imgId: 'signEntidadImg', phId: 'signEntidadPlaceholder', rmId: 'signEntidadRemove' }
+    ];
+
+    configs.forEach(c => {
+        const input = document.getElementById(c.inputId);
+        const img = document.getElementById(c.imgId);
+        const placeholder = document.getElementById(c.phId);
+        const rmBtn = document.getElementById(c.rmId);
+
+        if (!input || !img || !placeholder || !rmBtn) return;
+
+        input.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor selecciona un archivo de imagen (PNG, JPG o WEBP).');
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                img.src = evt.target.result;
+                img.classList.remove('hidden');
+                rmBtn.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        rmBtn.addEventListener('click', () => {
+            input.value = '';
+            img.src = '';
+            img.classList.add('hidden');
+            rmBtn.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        });
+    });
 }
 
 // ============================================================================

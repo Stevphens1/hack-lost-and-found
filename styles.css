@@ -1028,6 +1028,10 @@ body.dark-theme .hotspot-bar-wrapper {
     .no-print {
         display: none !important;
     }
+    #actaPrintArea img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }
 
 /* Gráficos y visualizaciones del panel de Gerencia */

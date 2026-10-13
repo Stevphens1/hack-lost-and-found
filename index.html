@@ -1509,26 +1509,56 @@
             </div>
             <p id="actaTotals" class="text-[11px] theme-text-secondary mb-6 text-right"></p>
 
-            <!-- Bloque de Firmas y Sellos (firma física al imprimir) -->
+            <!-- Bloque de Firmas y Sellos (Digital con imagen o física al imprimir) -->
             <div class="acta-sign-grid grid grid-cols-3 gap-4 pt-6 pb-2 text-center text-xs border-t border-dashed border-slate-300 dark:border-slate-700">
-                <div class="space-y-1">
-                    <div class="h-16"></div>
+                <div class="space-y-1 flex flex-col justify-end">
+                    <div class="h-16 flex items-end justify-center relative pb-1">
+                        <img id="signGerenciaImg" class="hidden max-h-14 max-w-[130px] object-contain mx-auto" alt="Firma Gerencia">
+                        <div id="signGerenciaPlaceholder" class="no-print">
+                            <label for="signGerenciaInput" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 bg-slate-50 dark:bg-slate-800/60 text-[10px] font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-colors shadow-sm" title="Subir foto de firma escaneada o digital">
+                                <i data-lucide="upload" class="w-3 h-3 text-indigo-500"></i>
+                                <span>Subir Firma</span>
+                            </label>
+                            <input type="file" id="signGerenciaInput" accept="image/*" class="hidden">
+                        </div>
+                        <button type="button" id="signGerenciaRemove" class="hidden no-print absolute top-0 right-1 text-rose-500 hover:text-rose-700 text-xs font-bold p-1 cursor-pointer" title="Quitar firma">✕</button>
+                    </div>
                     <div class="border-t border-slate-400 pt-1">
                         <p class="font-bold theme-text-primary text-[11px]">Gerencia de Operaciones</p>
                         <p class="text-[10px] theme-text-muted">Aprobación y V°B° · Firma y sello</p>
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <div class="h-16"></div>
+                <div class="space-y-1 flex flex-col justify-end">
+                    <div class="h-16 flex items-end justify-center relative pb-1">
+                        <img id="signSeguridadImg" class="hidden max-h-14 max-w-[130px] object-contain mx-auto" alt="Firma Seguridad">
+                        <div id="signSeguridadPlaceholder" class="no-print">
+                            <label for="signSeguridadInput" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 bg-slate-50 dark:bg-slate-800/60 text-[10px] font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-colors shadow-sm" title="Subir foto de firma escaneada o digital">
+                                <i data-lucide="upload" class="w-3 h-3 text-indigo-500"></i>
+                                <span>Subir Firma</span>
+                            </label>
+                            <input type="file" id="signSeguridadInput" accept="image/*" class="hidden">
+                        </div>
+                        <button type="button" id="signSeguridadRemove" class="hidden no-print absolute top-0 right-1 text-rose-500 hover:text-rose-700 text-xs font-bold p-1 cursor-pointer" title="Quitar firma">✕</button>
+                    </div>
                     <div class="border-t border-slate-400 pt-1">
                         <p class="font-bold theme-text-primary text-[11px]">Jefatura de Seguridad</p>
                         <p class="text-[10px] theme-text-muted">Conformidad de Egreso · Firma y sello</p>
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <div class="h-16"></div>
+                <div class="space-y-1 flex flex-col justify-end">
+                    <div class="h-16 flex items-end justify-center relative pb-1">
+                        <img id="signEntidadImg" class="hidden max-h-14 max-w-[130px] object-contain mx-auto" alt="Firma Entidad Receptora">
+                        <div id="signEntidadPlaceholder" class="no-print">
+                            <label for="signEntidadInput" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 bg-slate-50 dark:bg-slate-800/60 text-[10px] font-semibold text-slate-600 dark:text-slate-300 cursor-pointer transition-colors shadow-sm" title="Subir foto de firma escaneada o digital">
+                                <i data-lucide="upload" class="w-3 h-3 text-indigo-500"></i>
+                                <span>Subir Firma</span>
+                            </label>
+                            <input type="file" id="signEntidadInput" accept="image/*" class="hidden">
+                        </div>
+                        <button type="button" id="signEntidadRemove" class="hidden no-print absolute top-0 right-1 text-rose-500 hover:text-rose-700 text-xs font-bold p-1 cursor-pointer" title="Quitar firma">✕</button>
+                    </div>
                     <div class="border-t border-slate-400 pt-1">
                         <p class="font-bold theme-text-primary text-[11px]">Entidad Benéfica Receptora</p>
                         <p class="text-[10px] theme-text-muted">Recepción y Conformidad · Firma y sello</p>
