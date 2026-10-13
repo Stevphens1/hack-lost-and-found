@@ -211,3 +211,25 @@ La plataforma fue evaluada y diseñada siguiendo los seis pilares de buenas prá
 * **Eficiencia Operativa Comprobada:** Reduce el tiempo promedio de cotejo de horas o días a menos de 5 segundos gracias a la visión artificial de Amazon Bedrock.
 * **Seguridad y Trazabilidad Absoluta:** La integración del código de retiro y la verificación de identidad mitiga al 100% el riesgo de entregas equivocadas o reclamos fraudulentos.
 * **Impacto Social y Gobernanza (ESG):** Transforma el inventario estancado en un programa activo de donación benéfica, con respaldo legal y auditoría transparente para la administración del centro comercial.
+
+---
+
+## 10. Recomendaciones y Trabajo a Futuro (Roadmap Tecnológico)
+
+Como visión de escalamiento empresarial y madurez de producto en la nube, se plantean las siguientes iniciativas:
+
+1. **Integración Omnicanal con WhatsApp (Amazon Connect / Amazon Pinpoint):**
+   * Habilitar un canal conversacional directo mediante WhatsApp para que los usuarios reporten o reciban alertas de match de forma natural sin necesidad de ingresar a un navegador web.
+
+2. **Detección Proactiva con CCTV (Amazon Kinesis Video Streams + Amazon Rekognition):**
+   * Integrar la plataforma al circuito de cámaras de seguridad del centro comercial para detectar automáticamente pertenencias desatendidas en pasillos o patios de comidas por más de 10 minutos, generando un hallazgo preventivo antes de que el usuario note la pérdida.
+
+3. **Búsqueda Vectorial a Gran Escala (Amazon OpenSearch Serverless + Titan Multimodal Embeddings):**
+   * Migrar la capa de búsqueda hacia una base de datos vectorial con embeddings densos combinados (texto e imagen), permitiendo consultas semánticas instantáneas sobre cientos de miles de registros históricos a nivel nacional.
+
+4. **Extracción y Anonimización Inteligente de Documentos (Amazon Textract):**
+   * Procesar automáticamente documentos personales extraviados (DNI, pasaportes, licencias o tarjetas de crédito) aplicando reconocimiento óptico de caracteres (OCR) y enmascaramiento automático de datos sensibles (PII), asegurando estricto cumplimiento de la ley de protección de datos personales.
+
+5. **Modelo SaaS Multi-Tenant para Cadenas Comerciales:**
+   * Evolucionar la arquitectura hacia un esquema multi-inquilino (*multi-tenant*) con partición lógica de datos, permitiendo que grandes consorcios retail operen decenas de centros comerciales desde una consola gerencial unificada con permisos federados.
+
