@@ -955,6 +955,15 @@ function activateItemsTab() {
     matchesView?.classList.add('hidden');
     gerenciaView?.classList.add('hidden');
 
+    const staffSearchSection = document.getElementById('staffSearchSection');
+    if (staffSearchSection) {
+        if (window.currentUserIsStaff) {
+            staffSearchSection.classList.remove('hidden');
+        } else {
+            staffSearchSection.classList.add('hidden');
+        }
+    }
+
     if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm transition-all cursor-pointer';
     if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
     if (tabGerencia) tabGerencia.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
@@ -980,6 +989,7 @@ function activateMatchesTab() {
     itemsView?.classList.add('hidden');
     matchesView?.classList.remove('hidden');
     gerenciaView?.classList.add('hidden');
+    document.getElementById('staffSearchSection')?.classList.add('hidden');
 
     if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all cursor-pointer';
     if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-bold bg-sky-600 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer';
@@ -1009,6 +1019,7 @@ function activateGerenciaTab() {
     itemsView?.classList.add('hidden');
     matchesView?.classList.add('hidden');
     gerenciaView?.classList.remove('hidden');
+    document.getElementById('staffSearchSection')?.classList.add('hidden');
 
     if (tabItems) tabItems.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all cursor-pointer';
     if (tabMatches) tabMatches.className = 'px-4 py-2 rounded-full text-xs font-semibold theme-text-secondary hover:theme-text-primary transition-all flex items-center gap-1.5 cursor-pointer';
@@ -3058,19 +3069,10 @@ document.addEventListener('DOMContentLoaded', () => {
             this.classList.add('active');
             window.currentFilter = this.dataset.filter || 'ALL';
             
-            // --- NUEVO: Mostrar buscador de entrega solo en la pestaña "Entregados" (Staff) ---
+            // --- Buscador de entrega disponible para Staff en Reportes Generales ---
             const searchSection = document.getElementById('staffSearchSection');
             if (searchSection && window.currentUserIsStaff) {
-                if (window.currentFilter === 'DELIVERED') {
-                    searchSection.classList.remove('hidden');
-                } else {
-                    searchSection.classList.add('hidden');
-                    // Limpiar el buscador al cambiar de pestaña
-                    const input = document.getElementById('pickupCodeInput');
-                    if(input) input.value = '';
-                    const result = document.getElementById('searchCodeResult');
-                    if(result) result.classList.add('hidden');
-                }
+                searchSection.classList.remove('hidden');
             }
 
             renderItems();
@@ -3340,8 +3342,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Búsqueda ultrarrápida en memoria (sin llamar a la API)
-            const item = window.currentItems.find(i => (i.pickupCode || '').toUpperCase() === code);
+            // Búsqueda ultrarrápida en memoria: por código de retiro o ID de reporte
+            const item = window.currentItems.find(i => {
+                const pCode = (i.pickupCode || '').trim().toUpperCase();
+                const itId = (i.itemID || '').trim().toUpperCase();
+                return (pCode && pCode === code) || (itId && (itId === code || itId.startsWith(code)));
+            });
             
             if (!item) {
                 searchCodeResult.innerHTML = `<p class="text-xs text-rose-500 font-bold text-center">✕ Código no encontrado o incorrecto.</p>`;
@@ -3427,6 +3433,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.innerHTML = '✓ Entregar Objeto';
                     }
                 });
+            }
+        });
+        
+        pickupCodeInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') {
+                searchCodeBtn.click();
             }
         });
     }
