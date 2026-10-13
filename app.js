@@ -1309,10 +1309,38 @@ function gerComputeFunnel(current) {
     });
 
     return [
-        { label: 'Pérdidas reportadas', count: lostItems.length, color: 'bg-sky-500' },
-        { label: 'Con coincidencia IA', count: withMatch.size, color: 'bg-indigo-500' },
-        { label: 'Validadas por seguridad', count: validated.size, color: 'bg-amber-500' },
-        { label: 'Entregadas al dueño', count: delivered.size, color: 'bg-emerald-500' }
+        { 
+            stepNum: 1, 
+            label: 'Reportes de Pérdida', 
+            sub: 'Casos registrados por clientes', 
+            count: lostItems.length, 
+            color: 'bg-sky-500',
+            badgeBg: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30'
+        },
+        { 
+            stepNum: 2, 
+            label: 'Matches de IA (Nova Lite)', 
+            sub: 'Emparejados automáticamente', 
+            count: withMatch.size, 
+            color: 'bg-indigo-500',
+            badgeBg: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30'
+        },
+        { 
+            stepNum: 3, 
+            label: 'Validados por Seguridad', 
+            sub: 'Confirmados por el personal', 
+            count: validated.size, 
+            color: 'bg-amber-500',
+            badgeBg: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30'
+        },
+        { 
+            stepNum: 4, 
+            label: 'Entregados al Propietario', 
+            sub: 'Bienes devueltos satisfactoriamente', 
+            count: delivered.size, 
+            color: 'bg-emerald-500',
+            badgeBg: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+        }
     ];
 }
 
@@ -1448,23 +1476,69 @@ function renderInsights(ctx) {
 function renderAlerts(op) {
     const alerts = [];
     if (op.legal.length) {
-        alerts.push({ tone: 'rose', icon: '🔴', title: `${gerN(op.legal.length, 'objeto supera', 'objetos superan')} los 90 días`, text: 'Corresponde disposición final / baja definitiva.', action: 'lot-legal', btn: 'Ver lote' });
+        alerts.push({ 
+            tone: 'rose', 
+            icon: '🔴', 
+            badge: 'Baja Legal',
+            title: `${gerN(op.legal.length, 'objeto supera', 'objetos superan')} los 90 días`, 
+            text: 'Corresponde disposición final / baja definitiva de custodia.', 
+            action: 'lot-legal', 
+            btn: 'Ver lote legal' 
+        });
     }
     const donationOnly = op.lot.length - op.legal.length;
     if (donationOnly > 0) {
-        alerts.push({ tone: 'amber', icon: '🟡', title: `${gerN(donationOnly, 'objeto listo', 'objetos listos')} para donación`, text: 'Cumplen el plazo de 30 días sin ser reclamados.', action: 'lot-donation', btn: 'Ver lote' });
-    }
-    if (op.warning.length) {
-        alerts.push({ tone: 'sky', icon: '⏳', title: `${gerN(op.warning.length, 'objeto cerca', 'objetos cerca')} de los 30 días`, text: 'Tienen entre 20 y 29 días en almacén; aún se pueden reclamar.' });
+        alerts.push({ 
+            tone: 'amber', 
+            icon: '🟡', 
+            badge: 'Donación',
+            title: `${gerN(donationOnly, 'objeto listo', 'objetos listos')} para donación`, 
+            text: 'Superan los 30 días en custodia sin reclamo del propietario.', 
+            action: 'lot-donation', 
+            btn: 'Ver lote donación' 
+        });
     }
     if (op.pendingMatches) {
-        alerts.push({ tone: 'indigo', icon: '🔎', title: gerN(op.pendingMatches, 'coincidencia por revisar', 'coincidencias por revisar'), text: 'La IA propuso emparejamientos que esperan decisión del personal.', action: 'matches', btn: 'Revisar' });
+        alerts.push({ 
+            tone: 'indigo', 
+            icon: '🔎', 
+            badge: 'IA Nova Lite',
+            title: `${gerN(op.pendingMatches, 'coincidencia por revisar', 'coincidencias por revisar')}`, 
+            text: 'Amazon Bedrock sugirió emparejamientos que requieren validación del personal.', 
+            action: 'matches', 
+            btn: 'Revisar matches' 
+        });
     }
     if (op.awaitingPickup) {
-        alerts.push({ tone: 'emerald', icon: '🎫', title: `${gerN(op.awaitingPickup, 'validado esperando', 'validados esperando')} retiro`, text: 'El dueño ya fue identificado; falta la entrega en ventanilla.' });
+        alerts.push({ 
+            tone: 'emerald', 
+            icon: '🎫', 
+            badge: 'Módulo de Entrega',
+            title: `${gerN(op.awaitingPickup, 'objeto validado', 'objetos validados')} listo para retiro`, 
+            text: 'El dueño ya fue identificado; pendiente verificación de código y entrega en ventanilla.', 
+            action: 'pickup', 
+            btn: 'Ir a entregas' 
+        });
+    }
+    if (op.warning.length) {
+        alerts.push({ 
+            tone: 'sky', 
+            icon: '⏳', 
+            badge: 'Custodia',
+            title: `${gerN(op.warning.length, 'objeto cerca', 'objetos cerca')} de los 30 días`, 
+            text: 'Tienen entre 20 y 29 días en almacén; aún dentro del plazo de reclamo.', 
+            action: 'lot-donation', 
+            btn: 'Ver custodia' 
+        });
     }
     if (op.unmatchedFound) {
-        alerts.push({ tone: 'slate', icon: '❔', title: gerN(op.unmatchedFound, 'hallazgo sin coincidencia', 'hallazgos sin coincidencia'), text: 'Llevan 7 días o más sin ningún reporte de pérdida asociado.' });
+        alerts.push({ 
+            tone: 'slate', 
+            icon: '❔', 
+            badge: 'Sin match',
+            title: `${gerN(op.unmatchedFound, 'hallazgo sin coincidencia', 'hallazgos sin coincidencia')}`, 
+            text: 'Llevan 7 días o más en custodia sin reportes de pérdida asociados.' 
+        });
     }
 
     const toneClasses = {
@@ -1479,24 +1553,27 @@ function renderAlerts(op) {
     if (alerts.length === 0) {
         gerSetHtml('gerenciaAlertsContainer', `
             <div class="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-center">
-                <p class="font-bold text-emerald-600 dark:text-emerald-400">✓ Todo en orden</p>
-                <p class="theme-text-secondary mt-0.5">No hay acciones pendientes en este momento.</p>
+                <p class="font-bold text-emerald-600 dark:text-emerald-400">✓ Todo al día</p>
+                <p class="theme-text-secondary mt-0.5">No hay acciones urgentes pendientes en este momento.</p>
             </div>
         `);
         return;
     }
 
     gerSetHtml('gerenciaAlertsContainer', alerts.map(al => `
-        <div class="flex items-start justify-between gap-3 p-3 rounded-2xl border ${toneClasses[al.tone]}">
+        <div class="flex items-start justify-between gap-3 p-3.5 rounded-2xl border ${toneClasses[al.tone]} transition-all">
             <div class="flex items-start gap-2.5 min-w-0">
-                <span class="text-sm leading-5 shrink-0">${al.icon}</span>
+                <span class="text-base leading-5 shrink-0 mt-0.5">${al.icon}</span>
                 <div class="min-w-0">
-                    <p class="text-xs font-bold theme-text-primary">${escapeHtml(al.title)}</p>
-                    <p class="text-[11px] theme-text-secondary mt-0.5">${escapeHtml(al.text)}</p>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10 theme-text-secondary">${al.badge}</span>
+                        <p class="text-xs font-bold theme-text-primary truncate">${escapeHtml(al.title)}</p>
+                    </div>
+                    <p class="text-[11px] theme-text-secondary mt-1 leading-snug">${escapeHtml(al.text)}</p>
                 </div>
             </div>
             ${al.action ? `
-                <button type="button" data-ger-action="${al.action}" class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/70 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 theme-text-primary hover:bg-white dark:hover:bg-slate-700 transition-all cursor-pointer">
+                <button type="button" data-ger-action="${al.action}" class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 theme-text-primary hover:bg-slate-100 dark:hover:bg-slate-700 shadow-sm transition-all cursor-pointer">
                     ${al.btn}
                 </button>` : ''}
         </div>
@@ -1608,11 +1685,25 @@ function renderTimeAndCategories(a, itemCount) {
 function renderTrend(items, days) {
     const container = document.getElementById('trendChartContainer');
     if (!container) return;
-    const n = days || 30;
-    gerSetText('trendSubtitle', `Pérdidas reportadas vs. hallazgos registrados por día · últimos ${n} días`);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Si no se especificó 'days' explícito (ej: filtro ALL), adaptamos el ancho a la antigüedad de los datos
+    let n = days;
+    if (!n) {
+        let minTime = today.getTime();
+        items.forEach(i => {
+            const d = gerParseDate(i.createdAt || i.date);
+            if (d && !isNaN(d.getTime())) minTime = Math.min(minTime, d.getTime());
+        });
+        const spanDays = Math.ceil((today.getTime() - minTime) / GER_DAY_MS) + 1;
+        // Si todos los datos son recientes (≤7 días), usamos 7 días para que las barras se vean grandes y centradas
+        n = spanDays <= 7 ? 7 : spanDays <= 14 ? 14 : 30;
+    }
+
+    gerSetText('trendSubtitle', `Pérdidas reportadas vs. hallazgos registrados por día · ${n === 7 ? 'últimos 7 días' : n === 14 ? 'últimas 2 semanas' : 'últimos 30 días'}`);
+
     const buckets = Array.from({ length: n }, (_, idx) => {
         const d = new Date(today);
         d.setDate(today.getDate() - (n - 1 - idx));
@@ -1638,19 +1729,47 @@ function renderTrend(items, days) {
 
     const labelEvery = n <= 7 ? 1 : n <= 14 ? 2 : 5;
     const fmt = (d) => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const weekdayShort = (d) => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d.getDay()];
+    const barMaxWidth = n <= 7 ? 'max-w-[28px]' : n <= 14 ? 'max-w-[18px]' : 'max-w-[10px]';
 
     container.innerHTML = `
-        <div class="flex items-end gap-1 h-36 border-b border-slate-200 dark:border-slate-700 pb-0.5">
-            ${buckets.map(b => `
-                <div class="flex-1 min-w-0 h-full flex items-end justify-center gap-px" title="${fmt(b.date)} · ${b.lost} perdidos, ${b.found} hallazgos">
-                    <div class="ger-trend-bar bg-sky-500 w-full max-w-[10px]" style="height: ${b.lost ? Math.max((b.lost / max) * 100, 4) : 0}%"></div>
-                    <div class="ger-trend-bar bg-emerald-500 w-full max-w-[10px]" style="height: ${b.found ? Math.max((b.found / max) * 100, 4) : 0}%"></div>
-                </div>`).join('')}
+        <div class="flex items-end gap-1.5 sm:gap-2 h-40 border-b border-slate-200 dark:border-slate-700 pb-1 pt-6 px-1">
+            ${buckets.map(b => {
+                const isToday = b.date.getTime() === today.getTime();
+                return `
+                <div class="flex-1 min-w-0 h-full flex flex-col justify-end items-center group relative cursor-pointer" title="${fmt(b.date)} (${weekdayShort(b.date)}) · ${b.lost} perdidos, ${b.found} hallazgos">
+                    <div class="flex items-end justify-center gap-1 w-full h-full pb-0.5">
+                        <!-- Barra Perdidos -->
+                        <div class="flex flex-col items-center justify-end h-full w-full ${barMaxWidth}">
+                            ${b.lost > 0 ? `<span class="text-[10px] font-extrabold text-sky-600 dark:text-sky-400 mb-0.5">${b.lost}</span>` : ''}
+                            <div class="ger-trend-bar bg-sky-500 w-full rounded-t-md transition-all group-hover:brightness-110" style="height: ${b.lost ? Math.max((b.lost / max) * 100, 12) : 0}%"></div>
+                        </div>
+                        <!-- Barra Hallazgos -->
+                        <div class="flex flex-col items-center justify-end h-full w-full ${barMaxWidth}">
+                            ${b.found > 0 ? `<span class="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 mb-0.5">${b.found}</span>` : ''}
+                            <div class="ger-trend-bar bg-emerald-500 w-full rounded-t-md transition-all group-hover:brightness-110" style="height: ${b.found ? Math.max((b.found / max) * 100, 12) : 0}%"></div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
         </div>
-        <div class="flex gap-1 mt-1.5">
-            ${buckets.map((b, idx) => `<div class="flex-1 min-w-0 text-center text-[9px] theme-text-muted">${(n - 1 - idx) % labelEvery === 0 ? fmt(b.date) : ''}</div>`).join('')}
+        <div class="flex gap-1.5 sm:gap-2 mt-2 px-1">
+            ${buckets.map((b, idx) => {
+                const showLabel = (n - 1 - idx) % labelEvery === 0;
+                const isToday = b.date.getTime() === today.getTime();
+                return `
+                <div class="flex-1 min-w-0 text-center ${isToday ? 'font-bold text-indigo-600 dark:text-indigo-400' : 'theme-text-muted'}">
+                    ${showLabel ? `
+                        <div class="text-[10px] font-mono leading-none">${fmt(b.date)}</div>
+                        ${n <= 7 ? `<div class="text-[9px] uppercase tracking-wider mt-0.5 opacity-75">${weekdayShort(b.date)}</div>` : ''}
+                    ` : ''}
+                </div>`;
+            }).join('')}
         </div>
-        <p class="text-[10px] theme-text-muted mt-2">Máximo diario: ${max} registro(s). Pasa el cursor sobre cada barra para ver el detalle.</p>
+        <div class="flex items-center justify-between text-[10px] theme-text-muted mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>Máximo diario: <strong>${max} caso${max === 1 ? '' : 's'}</strong></span>
+            <span>💡 Cifras mostradas sobre las barras para lectura inmediata</span>
+        </div>
     `;
 }
 
@@ -1663,17 +1782,48 @@ function renderFunnel(current) {
     }
     gerSetHtml('funnelContainer', stages.map((s, idx) => {
         const pctOfBase = gerPct(s.count, base);
-        const step = idx > 0 ? gerPct(s.count, stages[idx - 1].count) : null;
+        let conversionNote = '';
+        if (idx === 1) {
+            const rate = base > 0 ? Math.round((s.count / base) * 100) : 0;
+            conversionNote = `<div class="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 mt-0.5">
+                <span>↳</span> <span><strong>Cobertura IA:</strong> ${rate}% de los reportes tuvieron match</span>
+            </div>`;
+        } else if (idx === 2) {
+            const prev = stages[1].count;
+            const rate = prev > 0 ? Math.round((s.count / prev) * 100) : 0;
+            conversionNote = `<div class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1 mt-0.5">
+                <span>↳</span> <span><strong>Precisión Staff:</strong> ${rate}% de las alertas IA fueron validadas</span>
+            </div>`;
+        } else if (idx === 3) {
+            const prev = stages[2].count;
+            const rate = prev > 0 ? Math.round((s.count / prev) * 100) : 0;
+            conversionNote = `<div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 mt-0.5">
+                <span>↳</span> <span><strong>Éxito de Retiro:</strong> ${rate}% de los validados ya fueron devueltos</span>
+            </div>`;
+        }
+
         return `
-            <div class="space-y-1">
+            <div class="p-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-1 transition-all">
                 <div class="flex items-center justify-between text-xs">
-                    <span class="theme-text-primary font-medium">${s.label}</span>
-                    <span class="font-mono font-semibold theme-text-primary">${s.count} <span class="theme-text-muted font-normal">(${pctOfBase}%)</span></span>
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${s.badgeBg} border shrink-0">
+                            ${s.stepNum}
+                        </span>
+                        <div class="truncate">
+                            <span class="theme-text-primary font-bold text-xs">${s.label}</span>
+                            <span class="text-[10px] theme-text-muted hidden sm:inline ml-1">· ${s.sub}</span>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2">
+                        <span class="font-mono font-bold text-sm theme-text-primary">${s.count}</span>
+                        <span class="text-[10px] theme-text-muted">${s.count === 1 ? 'objeto' : 'objetos'}</span>
+                        <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 ml-1">(${pctOfBase}%)</span>
+                    </div>
                 </div>
-                <div class="hotspot-bar-wrapper" style="height: 11px;">
-                    <div class="ger-funnel-fill ${s.color}" style="width: ${s.count > 0 ? Math.max(pctOfBase, 3) : 0}%"></div>
+                <div class="hotspot-bar-wrapper" style="height: 8px;">
+                    <div class="ger-funnel-fill ${s.color}" style="width: ${s.count > 0 ? Math.max(pctOfBase, 4) : 0}%"></div>
                 </div>
-                ${step !== null ? `<p class="text-[10px] theme-text-muted">${step}% avanza desde la etapa anterior</p>` : ''}
+                ${conversionNote}
             </div>`;
     }).join(''));
 }
@@ -2068,6 +2218,12 @@ function initGerenciaControls() {
         if (action === 'lot-legal') gerOpenLotWithFilter('D90');
         else if (action === 'lot-donation') gerOpenLotWithFilter('D30');
         else if (action === 'matches' && typeof activateMatchesTab === 'function') activateMatchesTab();
+        else if (action === 'pickup' && typeof activateItemsTab === 'function') {
+            activateItemsTab();
+            const filterValBtn = document.querySelector('.filter-btn[data-filter="VALIDATED"]');
+            if (filterValBtn) filterValBtn.click();
+            document.getElementById('staffSearchSection')?.scrollIntoView({ behavior: 'smooth' });
+        }
     });
 
     // Filtros de la tabla de donaciones
