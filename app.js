@@ -880,19 +880,24 @@ async function loadData() {
         const rawItems = extractArrayFromResponse(itemsResult, 'items');
         window.currentItems = rawItems.map(normalizeItem);
 
-        const matchesResult = await apiFetch(MATCHES_URL, { method: 'GET' });
-        const rawMatches = extractArrayFromResponse(matchesResult, 'matches');
-        window.currentMatches = rawMatches.map(m => {
-            const normalized = normalizeMatch(m);
-            // Si lostItem o foundItem no vinieron completos, hidratar desde currentItems
-            if (!normalized.lostItem && normalized.lostItemID) {
-                normalized.lostItem = window.currentItems.find(i => i.itemID === normalized.lostItemID) || {};
-            }
-            if (!normalized.foundItem && normalized.foundItemID) {
-                normalized.foundItem = window.currentItems.find(i => i.itemID === normalized.foundItemID) || {};
-            }
-            return normalized;
-        });
+        try {
+            const matchesResult = await apiFetch(MATCHES_URL, { method: 'GET' });
+            const rawMatches = extractArrayFromResponse(matchesResult, 'matches');
+            window.currentMatches = rawMatches.map(m => {
+                const normalized = normalizeMatch(m);
+                // Si lostItem o foundItem no vinieron completos, hidratar desde currentItems
+                if (!normalized.lostItem && normalized.lostItemID) {
+                    normalized.lostItem = window.currentItems.find(i => i.itemID === normalized.lostItemID) || {};
+                }
+                if (!normalized.foundItem && normalized.foundItemID) {
+                    normalized.foundItem = window.currentItems.find(i => i.itemID === normalized.foundItemID) || {};
+                }
+                return normalized;
+            });
+        } catch (matchErr) {
+            console.warn('Coincidencias no disponibles o sin permisos de matching:', matchErr);
+            window.currentMatches = [];
+        }
 
         renderItems();
         if (window.currentUserIsStaff) {
@@ -907,6 +912,14 @@ async function loadData() {
             itemsGrid.innerHTML = `
                 <div class="col-span-full theme-card border rounded-3xl p-8 text-center text-red-500 text-sm">
                     Error al conectar con la base de datos: ${escapeHtml(error.message)}
+                </div>
+            `;
+        }
+        const hotspotsContainer = document.getElementById('hotspotsContainer');
+        if (hotspotsContainer && window.currentItems.length === 0) {
+            hotspotsContainer.innerHTML = `
+                <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs">
+                    ⚠️ <strong>Aviso de conexión:</strong> No se pudieron recuperar los reportes de AWS DynamoDB (${escapeHtml(error.message)}). Verifica tu conexión o permisos de usuario.
                 </div>
             `;
         }
@@ -927,12 +940,14 @@ function activateItemsTab() {
     const gerenciaView = document.getElementById('gerenciaView');
     const formColumn = document.getElementById('formColumn');
     const contentColumn = document.getElementById('contentColumn');
+    const itemsSectionHeader = document.getElementById('itemsSectionHeader');
 
     formColumn?.classList.remove('hidden');
     if (contentColumn) {
         contentColumn.className = 'lg:col-span-7 transition-all duration-300';
     }
 
+    itemsSectionHeader?.classList.remove('hidden');
     itemsView?.classList.remove('hidden');
     matchesView?.classList.add('hidden');
     gerenciaView?.classList.add('hidden');
@@ -951,12 +966,14 @@ function activateMatchesTab() {
     const gerenciaView = document.getElementById('gerenciaView');
     const formColumn = document.getElementById('formColumn');
     const contentColumn = document.getElementById('contentColumn');
+    const itemsSectionHeader = document.getElementById('itemsSectionHeader');
 
     formColumn?.classList.remove('hidden');
     if (contentColumn) {
         contentColumn.className = 'lg:col-span-7 transition-all duration-300';
     }
 
+    itemsSectionHeader?.classList.add('hidden');
     itemsView?.classList.add('hidden');
     matchesView?.classList.remove('hidden');
     gerenciaView?.classList.add('hidden');
@@ -977,6 +994,7 @@ function activateGerenciaTab() {
     const gerenciaView = document.getElementById('gerenciaView');
     const formColumn = document.getElementById('formColumn');
     const contentColumn = document.getElementById('contentColumn');
+    const itemsSectionHeader = document.getElementById('itemsSectionHeader');
 
     // Modo ejecutivo full-width
     formColumn?.classList.add('hidden');
@@ -984,6 +1002,7 @@ function activateGerenciaTab() {
         contentColumn.className = 'lg:col-span-12 transition-all duration-300';
     }
 
+    itemsSectionHeader?.classList.add('hidden');
     itemsView?.classList.add('hidden');
     matchesView?.classList.add('hidden');
     gerenciaView?.classList.remove('hidden');
