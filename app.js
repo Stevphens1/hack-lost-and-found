@@ -1099,8 +1099,10 @@ function renderGerenciaDashboard() {
         return i.type === 'FOUND' && isNotDelivered && days >= 30;
     });
 
+    // Valor económico protegido: solo aplica a objetos hallados (FOUND) bajo custodia física de seguridad
     let totalEstimatedValue = 0;
-    filteredItems.forEach(i => {
+    const foundItemsForValue = filteredItems.filter(i => i.type === 'FOUND');
+    foundItemsForValue.forEach(i => {
         totalEstimatedValue += getCategoryEstimatedValue(i.category);
     });
 
