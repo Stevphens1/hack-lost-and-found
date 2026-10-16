@@ -1,14 +1,8 @@
-"""
-=============================================================================
-Lost & Found Portal - Visual Matchmaking Engine using Amazon Bedrock Nova Lite
-Model: amazon.nova-lite-v1:0 (Multimodal Vision + Text Analysis)
-AWS Region: us-east-1
-=============================================================================
-"""
 
 import json
 import re
 import base64
+import os
 from datetime import datetime, timezone
 
 import boto3
@@ -20,6 +14,7 @@ MODEL_ID = "amazon.nova-lite-v1:0"
 s3 = boto3.client("s3", region_name=REGION)
 bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 dynamodb = boto3.resource("dynamodb", region_name=REGION)
+sns = boto3.client("sns", region_name=REGION)
 
 items_table = dynamodb.Table("LostFoundItems")
 matches_table = dynamodb.Table("LostFoundMatches")
@@ -213,7 +208,6 @@ def save_analysis(match_id, result):
         ConditionExpression="attribute_exists(matchID)"
     )
 
-
 def process_match(match_id):
     match = matches_table.get_item(
         Key={"matchID": match_id}
@@ -271,6 +265,55 @@ def process_match(match_id):
         result["visualSimilarity"]
     )
 
+    # ==========================================
+    # INICIO DE LA LÓGICA DE NOTIFICACIONES SNS
+    # ==========================================
+    try:
+        topic_clientes = os.environ.get("TOPIC_CLIENTES_ARN")
+        topic_personal = os.environ.get("TOPIC_PERSONAL_ARN")
+        similitud = result.get("visualSimilarity")
+
+        # 1. Notificar al cliente que su imagen fue procesada (Opcional, pero recomendado)
+        if topic_clientes:
+            mensaje_cliente = (
+                "Hola,\n"
+                "Tu reporte de objeto ha sido analizado por nuestro sistema de visión artificial.\n"
+                "Ingresa a Lost&Found para revisar el estado actual de tu solicitud."
+            )
+            sns.publish(
+                TopicArn=topic_clientes,
+                Message=mensaje_cliente,
+                Subject="Actualización de tu reporte en Lost&Found"
+            )
+            print("Notificación de análisis enviada al cliente.")
+
+        # 2. Notificar al PERSONAL SOLO si hay coincidencia ALTA o MEDIA
+        if topic_personal and similitud in ["ALTA", "MEDIA"]:
+            mensaje_personal = (
+                "🚨 ALERTA DE COINCIDENCIA (MATCH) 🚨\n\n"
+                f"El sistema ha detectado una coincidencia visual con similitud: {similitud}.\n\n"
+                f"- ID del Match: {match_id}\n"
+                f"- Objeto Perdido ID: {match.get('lostItemID')}\n"
+                f"- Objeto Encontrado ID: {match.get('foundItemID')}\n\n"
+                "Por favor, ingrese al panel de administración para validar las imágenes."
+            )
+            sns.publish(
+                TopicArn=topic_personal,
+                Message=mensaje_personal,
+                Subject=f"[MATCH {similitud}] Posible coincidencia encontrada"
+            )
+            print("Alerta de coincidencia enviada exitosamente al personal.")
+        else:
+            print(f"Similitud fue {similitud}. No se envió alerta al personal.")
+
+    except Exception as sns_error:
+        # Evitamos que un fallo en el correo rompa la respuesta de la API
+        print("SNS_PUBLISH_ERROR:", str(sns_error))
+
+    # ==========================================
+    # FIN DE LA LÓGICA DE NOTIFICACIONES SNS
+    # ==========================================
+
     return result
 
 
@@ -289,7 +332,7 @@ def lambda_handler(event, context):
                 }, ensure_ascii=False)
             }
 
-        # Pruebas manuales
+        # Pruebas manuales anteriores
         body = event.get("body", event)
 
         if isinstance(body, str):
@@ -377,3 +420,5 @@ def lambda_handler(event, context):
                 "detail": str(error)
             })
         }
+
+

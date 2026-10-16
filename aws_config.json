@@ -1,0 +1,68 @@
+{
+  "AWS_REGION": "us-east-1",
+  "AWS_ACCOUNT_ID": "985301269025",
+  "COGNITO": {
+    "USER_POOL_ID": "us-east-1_Www1X2mBC",
+    "CLIENT_ID": "65f9o7e1mst13csirabv4c2kd9",
+    "AUTHORIZER_NAME": "Cognito-Auth"
+  },
+  "API_GATEWAY": {
+    "REST_API_ID": "zhylygp2y7",
+    "STAGE": "dev",
+    "BASE_URL": "https://zhylygp2y7.execute-api.us-east-1.amazonaws.com/dev",
+    "OPENAPI_SPEC_FILE": "api_gateway_openapi.json"
+  },
+  "STORAGE_S3": {
+    "PHOTO_BUCKET": "lost-found-fotos",
+    "FRONTEND_BUCKET": "lost-found-frontend-app",
+    "FRONTEND_WEBSITE_URL": "http://lost-found-frontend-app.s3-website-us-east-1.amazonaws.com",
+    "CLOUDFRONT_URL": "https://drasv9hmlfu6n.cloudfront.net",
+    "CORS_CONFIG_FILE": "s3_cors.json"
+  },
+  "DYNAMODB": {
+    "ITEMS_TABLE": "LostFoundItems",
+    "MATCHES_TABLE": "LostFoundMatches"
+  },
+  "SNS": {
+    "TOPIC_CLIENTES_ARN": "arn:aws:sns:us-east-1:985301269025:lost-found-notifications",
+    "TOPIC_PERSONAL_ARN": "arn:aws:sns:us-east-1:985301269025:LostAndFound-Personal"
+  },
+  "BEDROCK": {
+    "MODEL_ID": "amazon.nova-lite-v1:0",
+    "REGION": "us-east-1"
+  },
+  "LAMBDA_FUNCTIONS": {
+    "CREATE_ITEM": {
+      "function_name": "lost-found-create-item",
+      "file": "lambda_create_item.py",
+      "runtime": "python3.12",
+      "handler": "lambda_function.lambda_handler",
+      "env_vars": {
+        "TOPIC_CLIENTES_ARN": "arn:aws:sns:us-east-1:985301269025:lost-found-notifications",
+        "NOVA_FUNCTION": "lost-found-image-analysis",
+        "MATCH_THRESHOLD": "60"
+      }
+    },
+    "IMAGE_ANALYSIS": {
+      "function_name": "lost-found-image-analysis",
+      "file": "lambda_image_analysis.py",
+      "runtime": "python3.12",
+      "handler": "lambda_function.lambda_handler"
+    },
+    "ASSISTANT": {
+      "function_name": "lost-found-assistant",
+      "file": "lambda_assistant.py",
+      "runtime": "python3.12",
+      "handler": "lambda_function.lambda_handler"
+    },
+    "SNS_SUBSCRIBER": {
+      "function_name": "lostandfound-sns-subscriber",
+      "file": "lambda_sns_subscriber.mjs",
+      "runtime": "nodejs20.x",
+      "handler": "index.handler",
+      "env_vars": {
+        "SNS_TOPIC_ARN": "arn:aws:sns:us-east-1:985301269025:lost-found-notifications"
+      }
+    }
+  }
+}
